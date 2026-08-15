@@ -1,0 +1,96 @@
+# AdGuardHome.yaml — reference config for VPS deployment
+# Copy to /opt/AdGuardHome/AdGuardHome.yaml and adjust as needed
+
+http:
+  address: 0.0.0.0:3000
+  session_ttl: 30d
+
+users:
+  - name: admin
+    # bcrypt hash of the admin password
+    password: $2a$10$2Y7P4L8vRCdiM5ekOgfW8uH.9OxZQPg5/zE0Lj.kEJSNghTgok6ba
+
+auth_attempts: 5
+block_auth_min: 15
+
+dns:
+  bind_hosts:
+    - 0.0.0.0
+  port: 53
+  anonymize_client_ip: false
+  ratelimit: 20
+  ratelimit_subnet_len_ipv4: 24
+  ratelimit_subnet_len_ipv6: 56
+  ratelimit_whitelist: []
+  refuse_any: true
+  upstream_dns:
+    - https://dns10.quad9.net/dns-query
+  bootstrap_dns:
+    - 9.9.9.10
+    - 149.112.112.10
+    - 2620:fe::10
+    - 2620:fe::fe:10
+  upstream_mode: load_balance
+  fastest_timeout: 1s
+  allowed_clients: []
+  disallowed_clients: []
+  trusted_proxies:
+    - 127.0.0.0/8
+    - ::1/128
+  cache_enabled: true
+  cache_size: 4194304
+  cache_ttl_min: 0
+  cache_ttl_max: 0
+  enable_dnssec: true
+  edns_client_subnet:
+    enabled: false
+    use_custom: false
+  upstream_timeout: 10s
+  use_private_ptr_resolvers: true
+  serve_plain_dns: true
+  hostsfile_enabled: true
+
+tls:
+  enabled: false
+
+querylog:
+  interval: 90d
+  size_memory: 1000
+  enabled: true
+  file_enabled: true
+
+statistics:
+  interval: 1d
+  enabled: true
+
+filters:
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt
+    name: AdGuard DNS filter
+    id: 1
+  - enabled: false
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_2.txt
+    name: AdAway Default Blocklist
+    id: 2
+
+user_rules: []
+
+dhcp:
+  enabled: false
+
+filtering:
+  blocking_mode: default
+  filtering_enabled: true
+  protection_enabled: true
+  safesearch_cache_size: 1048576
+  safebrowsing_cache_size: 1048576
+  parental_cache_size: 1048576
+  cache_time: 30
+  filters_update_interval: 24
+
+log:
+  enabled: true
+  max_size: 100
+  max_age: 3
+
+schema_version: 34

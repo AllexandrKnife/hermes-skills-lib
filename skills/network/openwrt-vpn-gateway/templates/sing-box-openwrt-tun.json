@@ -1,0 +1,71 @@
+{
+  "log": {
+    "level": "info",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "tls",
+        "tag": "remote",
+        "server": "1.1.1.1",
+        "server_port": 853
+      }
+    ],
+    "final": "remote",
+    "strategy": "ipv4_only"
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "interface_name": "singtun",
+      "address": [
+        "172.19.0.1/30"
+      ],
+      "mtu": 1500,
+      "auto_route": true,
+      "strict_route": false,
+      "stack": "system"
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "vless",
+      "tag": "vless-reality",
+      "server": "5.39.255.242",
+      "server_port": 443,
+      "uuid": "26bc3168-fbde-41e3-9d04-16535a4f304d",
+      "flow": "xtls-rprx-vision",
+      "tls": {
+        "enabled": true,
+        "server_name": "apple.com",
+        "utls": {
+          "enabled": true,
+          "fingerprint": "chrome"
+        },
+        "reality": {
+          "enabled": true,
+          "public_key": "NTTlxcWI8byYCvb0t15cEtLWZ7HJkIsf-B-kqoluWU0",
+          "short_id": "f60204fc"
+        }
+      }
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "final": "vless-reality",
+    "auto_detect_interface": true,
+    "rules": [
+      {
+        "ip_cidr": [
+          "5.39.255.242/32"
+        ],
+        "outbound": "direct"
+      }
+    ]
+  }
+}

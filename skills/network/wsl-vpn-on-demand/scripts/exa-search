@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""
+exa-search: умный поиск Exa с автофолбэком на VPN-туннель.
+
+Логика:
+1. Туннель уже поднят (vpn-tun.sh status) → сразу через прокси.
+2. Туннель выключен → пробует НАПРЯМУЮ (российский IP).
+3. Прямой упал (403 Cloudflare / ошибка) → vpn-tun.sh up → повтор через прокси.
+4. Туннель остаётся поднятым до явного down.
+
+Почему curl, а не urllib/requests: Cloudflare режет Python-клиентов по JA3
+TLS-фингерпринту (403), curl проходит.
+
+Использование:
+  exa-search "запрос" [кол-во_результатов]
+"""
+import json
+import subprocess
+import sys
+
+URL = "https://mcp.exa.ai/mcp"
+PROXY = "http://127.0.0.1:1080"
+TUN_SCRIPT = "/usr/local/bin/vpn-tun.sh"
+
+
+def curl_post(body: dict, use_proxy: bool = False) -> tuple[str, int]:
+    cmd = ["curl", "-s", "-m", "45", "-o", "/dev/null", "-w", "%{http_code}", "-X", "POST", URL,
+           "-H", "Content-Type: application/json",
+           "-H", "Accept: application/json, text/event-stream"]
+    if use_proxy:
+        cmd += ["-x", PROXY]
+    code = subprocess.run(cmd + ["-d", json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                                                    "params": {"protocolVersion": "2025-03-26", "capabilities": {},
+                                                               "clientInfo": {"name": "exa-search", "version": "1.0"}}})],
+                          capture_output=True, text=True, timeout=60).stdout.strip()
+    if code != "200":
+        return "", int(code or 0)
+    cmd2 = ["curl", "-s", "-m", "60", "-X", "POST", URL,
+            "-H", "Content-Type: application/json",
+            "-H", "Accept: application/json, text/event-stream"]
+    if use_proxy:
+        cmd2 += ["-x", PROXY]
+    raw = subprocess.run(cmd2 + ["-d", json.dumps({"jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                                                    "params": {"name": "web_search_exa",
+                                                               "arguments": {"query": body, "numResults": 5}}})],
+                         capture_output=True, text=True, timeout=90).stdout
+    return raw, int(code)
+
+
+def parse_sse(raw: str):
+    for line in raw.splitlines():
+        if line.startswith("data: "):
+            try:
+                yield json.loads(line[6:])
+            except json.JSONDecodeError:
+                pass
+
+
+def extract_text(raw: str) -> str:
+    for msg in parse_sse(raw):
+        if "result" in msg:
+            for c in msg["result"].get("content", []):
+                if c.get("type") == "text":
+                    return c["text"]
+    return ""
+
+
+def tunnel_up() -> bool:
+    r = subprocess.run([TUN_SCRIPT, "up"], capture_output=True, text=True, timeout=30)
+    return r.returncode == 0
+
+
+def tunnel_alive() -> bool:
+    r = subprocess.run([TUN_SCRIPT, "status"], capture_output=True, text=True, timeout=15)
+    return "работает" in r.stdout
+
+
+def main():
+    query = sys.argv[1] if len(sys.argv) > 1 else "test"
+    num = int(sys.argv[2]) if len(sys.argv) > 2 else 5
+
+    # туннель уже поднят — сразу через прокси
+    if tunnel_alive():
+        raw, code = curl_post(query, use_proxy=True)
+        if code == 200 and raw.strip():
+            text = extract_text(raw)
+            if text:
+                print(text)
+                print("\n[via: tunnel (уже был поднят)]")
+                return
+
+    # попытка 1: напрямую
+    raw, code = curl_post(query, use_proxy=False)
+    if code == 200 and raw.strip():
+        text = extract_text(raw)
+        if text:
+            print(text)
+            print("\n[via: direct, туннель не нужен]")
+            return
+
+    # попытка 2: поднять туннель и повторить через прокси
+    print(f"[info] прямой запрос не удался (code={code}), поднимаю туннель...", file=sys.stderr)
+    if not tunnel_up():
+        print("ОШИБКА: не удалось поднять туннель (vpn-tun.sh up)", file=sys.stderr)
+        sys.exit(1)
+    raw, code = curl_post(query, use_proxy=True)
+    if code == 200 and raw.strip():
+        text = extract_text(raw)
+        if text:
+            print(text)
+            print("\n[via: tunnel, туннель поднят автоматически]")
+            return
+
+    print(f"ОШИБКА: оба способа не сработали (direct={code}, tunnel={code})", file=sys.stderr)
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

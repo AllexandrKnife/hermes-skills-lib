@@ -1,0 +1,39 @@
+#!/usr/sbin/nft -f
+
+# Динамический бан DNS-спамеров (для AdGuardHome-нод, слушающих *:53)
+# Логика: источник, превышающий 15 запросов/сек на UDP 53 (burst 50),
+# добавляется в set flood на 1 час (таймаут продлевается, пока спамит).
+# Легитимный клиент (домашний роутер ~1 запрос/15 сек) порог не превышает
+# ни при каком IP — динамический IP клиента не проблема.
+#
+# ВАЖНО: chain input priority -1 (НЕ 0!). При priority 0 таблицы iptables
+# (тоже priority 0) обработают пакеты раньше, глобальный лимит iptables
+# «съест» поток, и бан-сет не наполнится (проверено 14.08.2026).
+# ВАЖНО: в файле НЕ должно быть "flush ruleset" — при старте nftables.service
+# он снесёт iptables-nft правила (f2b-sshd и т.п.).
+#
+# Установка:
+#   cp /etc/nftables.conf /etc/nftables.conf.bak
+#   cp этот_файл /etc/nftables.conf
+#   nft -f /etc/nftables.conf
+#   systemctl enable --now nftables
+# Плюс iptables-эшелоны (см. references/dns-flood-protection.md):
+#   hashlimit per-source 15/сек -> limit 50/сек ACCEPT -> DROP
+
+table inet dns_protect {
+	chain input {
+		type filter hook input priority -1; policy accept;
+
+		# Превысил лимит -> добавить в бан-сет и дропнуть пакет
+		udp dport 53 add @flood { ip saddr limit rate over 15/second burst 50 packets } drop
+
+		# Все последующие пакеты забаненного источника на 53 -> дроп
+		udp dport 53 ip saddr @flood drop
+	}
+
+	set flood {
+		type ipv4_addr
+		flags dynamic, timeout
+		timeout 1h
+	}
+}
