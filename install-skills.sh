@@ -167,12 +167,63 @@ fix_paths() {
 
 # --- Автозагрузка ключевых скиллов ----------------------------------------------
 # Три скилла (document-critic, ask-first, flash-pro-boost) должны грузиться в
-# каждую сессию автоматически. Два механизма (см. hermes-skill-autoload):
-#   1) HERMES_TUI_SKILLS в env-файле Hermes — читается TUI-путём при старте;
-#   2) alias hermes='hermes -s ...' в ~/.bashrc — для CLI-пути (CLI env-переменную
-#      НЕ читает, только флаг -s; alias подставляет флаг при каждом запуске).
-# При --base-dir пишем в песочницу (${BASE_DIR}/.hermes/.env, ${BASE_DIR}/.bashrc),
-# чтобы тест не трогал реальный конфиг.
+# каждую сессию автоматически. Механизмы (см. hermes-skill-autoload):
+#   1) ОБЁРТКА hermes (основной, железобетонный): заменяет бинарь hermes в PATH
+#      скриптом, который добавляет -s document-critic,ask-first,flash-pro-boost
+#      при интерактивном запуске. Работает в любом shell (bash/zsh/sh, login и
+#      non-login, tmux, скрипты) — НЕ зависит от чтения .bashrc. Служебные
+#      подкоманды (gateway, cron, mcp, serve, acp, update...) идут без -s.
+#   2) HERMES_TUI_SKILLS в env-файле Hermes — для TUI-пути (там, где он используется);
+#   3) alias hermes='hermes -s ...' в ~/.bashrc — фолбэк, только если обёртку
+#      поставить нельзя (нет прав на запись в каталог бинаря).
+# При --base-dir пишем только в песочницу (${BASE_DIR}/.hermes/.env, ${BASE_DIR}/.bashrc)
+# и НЕ трогаем системный hermes — тест не должен ломать реальную машину.
+WRAPPER_INSTALLED="no"
+
+setup_wrapper() {
+  local bin_path bin_dir real_path
+  if [[ -n "$BASE_DIR" ]]; then
+    echo "  автозагрузка: обёртка пропущена (режим --base-dir, тест)"
+    return 0
+  fi
+  bin_path="$(command -v hermes 2>/dev/null || true)"
+  if [[ -z "$bin_path" ]]; then
+    echo "  автозагрузка: hermes не найден в PATH — обёртка пропущена"
+    return 0
+  fi
+  if grep -q "hermes-skills preload wrapper" "$bin_path" 2>/dev/null; then
+    echo "  автозагрузка: обёртка уже установлена ($bin_path)"
+    WRAPPER_INSTALLED="yes"
+    return 0
+  fi
+  bin_dir="$(dirname "$bin_path")"
+  if [[ ! -w "$bin_dir" ]]; then
+    echo "  автозагрузка: нет прав на запись в $bin_dir — обёртка пропущена, использую alias"
+    return 0
+  fi
+  real_path="$(readlink -f "$bin_path")"
+  cp -a "$real_path" "$bin_dir/hermes.real" || {
+    echo "  автозагрузка: не удалось сохранить оригинал $real_path" >&2
+    return 1
+  }
+  cat > "$bin_path" <<'WRAPPER'
+#!/usr/bin/env bash
+# hermes-skills preload wrapper: добавляет -s document-critic,ask-first,flash-pro-boost
+# для интерактивных сессий. Служебные подкоманды (gateway, cron, mcp, serve...) — без -s.
+# Оригинал сохранён рядом как hermes.real.
+REAL="$(dirname "$(readlink -f "$0")")/hermes.real"
+case "$1" in
+  gateway|cron|mcp|serve|acp|import|export|sessions|profile|completion|update|uninstall|version|help|--version|--help)
+    exec "$REAL" "$@"
+    ;;
+esac
+exec "$REAL" -s document-critic,ask-first,flash-pro-boost "$@"
+WRAPPER
+  chmod +x "$bin_path"
+  WRAPPER_INSTALLED="yes"
+  echo "  автозагрузка: обёртка установлена ($bin_path -> $bin_dir/hermes.real)"
+}
+
 setup_autoload() {
   local target_env target_bashrc
   if [[ -n "$BASE_DIR" ]]; then
@@ -191,7 +242,15 @@ setup_autoload() {
     echo "  автозагрузка: HERMES_TUI_SKILLS уже есть в $target_env"
   fi
 
-  if [[ ! -f "$target_bashrc" ]] || ! grep -q "^alias hermes=" "$target_bashrc"; then
+  setup_wrapper
+
+  # Если обёртка стоит — alias не нужен (двойной -s). Фолбэк — только без обёртки.
+  if [[ "$WRAPPER_INSTALLED" == "yes" ]]; then
+    if [[ -f "$target_bashrc" ]] && grep -q "^alias hermes=" "$target_bashrc"; then
+      sed -i "/^alias hermes=.*document-critic.*/d" "$target_bashrc"
+      echo "  автозагрузка: alias hermes убран из $target_bashrc (работает обёртка)"
+    fi
+  elif [[ ! -f "$target_bashrc" ]] || ! grep -q "^alias hermes=" "$target_bashrc"; then
     printf "alias hermes='hermes -s document-critic,ask-first,flash-pro-boost'\n" >> "$target_bashrc"
     echo "  автозагрузка: alias hermes добавлен в $target_bashrc"
   else
