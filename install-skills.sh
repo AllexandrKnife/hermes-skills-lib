@@ -165,6 +165,40 @@ fix_paths() {
   fi
 }
 
+# --- Автозагрузка ключевых скиллов ----------------------------------------------
+# Три скилла (document-critic, ask-first, flash-pro-boost) должны грузиться в
+# каждую сессию автоматически. Два механизма (см. hermes-skill-autoload):
+#   1) HERMES_TUI_SKILLS в env-файле Hermes — читается TUI-путём при старте;
+#   2) alias hermes='hermes -s ...' в ~/.bashrc — для CLI-пути (CLI env-переменную
+#      НЕ читает, только флаг -s; alias подставляет флаг при каждом запуске).
+# При --base-dir пишем в песочницу (${BASE_DIR}/.hermes/.env, ${BASE_DIR}/.bashrc),
+# чтобы тест не трогал реальный конфиг.
+setup_autoload() {
+  local target_env target_bashrc
+  if [[ -n "$BASE_DIR" ]]; then
+    target_env="${BASE_DIR}/.hermes/.env"
+    target_bashrc="${BASE_DIR}/.bashrc"
+  else
+    target_env="$HOME/.hermes/.env"
+    target_bashrc="$HOME/.bashrc"
+  fi
+  mkdir -p "$(dirname "$target_env")"
+
+  if [[ ! -f "$target_env" ]] || ! grep -q "^HERMES_TUI_SKILLS=" "$target_env"; then
+    printf 'HERMES_TUI_SKILLS=document-critic,ask-first,flash-pro-boost\n' >> "$target_env"
+    echo "  автозагрузка: HERMES_TUI_SKILLS добавлена в $target_env"
+  else
+    echo "  автозагрузка: HERMES_TUI_SKILLS уже есть в $target_env"
+  fi
+
+  if [[ ! -f "$target_bashrc" ]] || ! grep -q "^alias hermes=" "$target_bashrc"; then
+    printf "alias hermes='hermes -s document-critic,ask-first,flash-pro-boost'\n" >> "$target_bashrc"
+    echo "  автозагрузка: alias hermes добавлен в $target_bashrc"
+  else
+    echo "  автозагрузка: alias hermes уже есть в $target_bashrc"
+  fi
+}
+
 # --- Основная логика ------------------------------------------------------------
 echo "Установка скиллов Hermes (пользователь GitHub: ${GITHUB_USER}, режим: ${MODE})"
 mkdir -p "$SKILLS_DIR" "$LIB_DIR" "$TRIZ_DIR" "$EKO_DIR"
@@ -178,17 +212,20 @@ if [[ "$NEED_TOKEN" == "yes" ]]; then
   get_token
 fi
 
-echo "[1/4] hermes-skills -> $SKILLS_DIR"
+echo "[1/5] hermes-skills -> $SKILLS_DIR"
 clone_or_pull "hermes-skills" "$SKILLS_DIR" "yes"
 
-echo "[2/4] hermes-skills-lib -> $LIB_DIR (публичный)"
+echo "[2/5] hermes-skills-lib -> $LIB_DIR (публичный)"
 clone_or_pull "hermes-skills-lib" "$LIB_DIR" "no"
 
-echo "[3/4] hermes-triz-core -> $TRIZ_DIR"
+echo "[3/5] hermes-triz-core -> $TRIZ_DIR"
 clone_or_pull "hermes-triz-core" "$TRIZ_DIR" "yes"
 
-echo "[4/4] eko-core -> $EKO_DIR"
+echo "[4/5] eko-core -> $EKO_DIR"
 clone_or_pull "eko-core" "$EKO_DIR" "yes"
+
+echo "[5/5] автозагрузка скиллов (document-critic, ask-first, flash-pro-boost)"
+setup_autoload
 
 # --- Отчёт -----------------------------------------------------------------------
 echo

@@ -36,3 +36,9 @@ curl -fsSL https://raw.githubusercontent.com/AllexandrKnife/hermes-skills-lib/ma
 сбрасываются (git checkout -- .) — пути генерируются заново. Свои ручные правки
 скиллов в user-режиме при обновлении потеряются.
 
+Автозагрузка: скрипт дополнительно настраивает автозагрузку трёх ключевых
+скиллов (document-critic, ask-first, flash-pro-boost):
+- HERMES_TUI_SKILLS=... в ~/.hermes/.env — для TUI-сессий;
+- alias hermes='hermes -s ...' в ~/.bashrc — для CLI-сессий (CLI env-переменную
+  не читает, только флаг -s). Повторный запуск не дублирует строки.
+
