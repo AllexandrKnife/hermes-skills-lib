@@ -137,7 +137,10 @@ clone_or_pull() {
         echo "  $repo: ВНИМАНИЕ — не удалось сохранить локальные правки в stash" >&2
       fi
     fi
-    git -C "$dir" pull --ff-only --quiet
+    git -C "$dir" pull --ff-only --quiet || {
+      # Не фатально: пусть пользователь увидит, что pull не удался, но продолжит
+      echo "  $repo: ВНИМАНИЕ — git pull не удался (сеть/конфликт), повторный запуск доделает" >&2
+    }
     if [[ "$stashed" == "yes" ]]; then
       # stash pop может конфликтовать с новыми файлами из pull — правки НЕ теряются,
       # остаются в stash (git stash list). Это безопаснее, чем checkout -- . (потеря).
@@ -163,6 +166,16 @@ clone_or_pull() {
     if [[ "$repo" == "hermes-skills" && "$MODE" == "user" ]]; then
       fix_paths "$dir"
     fi
+  fi
+  # КР-1 (17.08.2026): git сохраняет URL с токеном в .git/config после clone —
+  # убрать токен из remote, оставить чистый https://github.com/... (креды берутся
+  # из ~/.git-credentials или GITHUB_TOKEN при следующем pull). Также лечит
+  # «двойной github.com» от битой ручной чистки. Идемпотентно: если URL уже чист —
+  # ничего не меняет.
+  clean_url="$(git -C "$dir" remote get-url origin 2>/dev/null | sed -E 's#https?://[^@/]*@#https://#; s#github\.com/github\.com#github.com#' || true)"
+  if [[ -n "$clean_url" ]] && [[ "$clean_url" != "$(git -C "$dir" remote get-url origin 2>/dev/null || true)" ]]; then
+    git -C "$dir" remote set-url origin "$clean_url"
+    echo "  $repo: remote очищен от токена -> $clean_url"
   fi
 }
 
@@ -410,13 +423,30 @@ done
 echo "Установка скиллов Hermes (пользователь GitHub: ${GITHUB_USER}, режим: ${MODE}, скрипт v${SCRIPT_VERSION})"
 mkdir -p "$SKILLS_DIR" "$LIB_DIR" "$TRIZ_DIR" "$EKO_DIR"
 
-# Токен нужен, только если хотя бы одно приватное репо ещё не установлено.
+# Токен нужен, если:
+#   1) хотя бы одно приватное репо ещё не установлено (для clone), ИЛИ
+#   2) в ~/.git-credentials нет github.com-строки (для pull приватных репо —
+#      remote чист от токена, креды берутся из credentials).
 NEED_TOKEN="no"
 for d in "$SKILLS_DIR" "$TRIZ_DIR" "$EKO_DIR"; do
   if [[ ! -d "$d/.git" ]]; then NEED_TOKEN="yes"; fi
 done
+if [[ "$NEED_TOKEN" == "no" ]] && { [[ ! -f "$HOME/.git-credentials" ]] || ! grep -q 'github.com' "$HOME/.git-credentials" 2>/dev/null; }; then
+  NEED_TOKEN="yes"
+fi
 if [[ "$NEED_TOKEN" == "yes" ]]; then
   get_token
+  # Сохранить токен в ~/.git-credentials (если github.com-строки ещё нет) —
+  # иначе pull приватных репо после очистки remote запросит Username.
+  if [[ -n "$TOKEN" ]]; then
+    if [[ ! -f "$HOME/.git-credentials" ]] || ! grep -q 'github.com' "$HOME/.git-credentials" 2>/dev/null; then
+      mkdir -p "$HOME"
+      printf 'https://%s:%s@github.com\n' "$GITHUB_USER" "$TOKEN" >> "$HOME/.git-credentials"
+      chmod 600 "$HOME/.git-credentials"
+      git config --global credential.helper store 2>/dev/null || true
+      echo "  credentials: токен сохранён в $HOME/.git-credentials (chmod 600)"
+    fi
+  fi
 fi
 
 echo "[1/5] hermes-skills -> $SKILLS_DIR"
