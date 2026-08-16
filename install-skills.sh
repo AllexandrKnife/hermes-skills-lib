@@ -8,11 +8,17 @@
 #   bash install-skills.sh [--base-dir DIR]
 #     --base-dir DIR — префикс для путей установки (для тестирования в песочнице).
 #
+# Режимы (автоопределение, переопределяется через HERMES_INSTALL_MODE):
+#   root (id -u == 0):  библиотеки -> /root/hermes-skills-lib, /root/hermes-triz-core, /root/eko-core
+#   user (иначе):       библиотеки -> $HOME/hermes-skills-lib, $HOME/hermes-triz-core, $HOME/eko-core
+#                       + sed-замена /root/... -> $HOME/... в скиллах (оркестраторы ссылаются
+#                         на библиотеки абсолютными путями; в user-режиме пути переписываются).
+#
 # Устанавливает 4 репозитория:
 #   hermes-skills       -> ~/.hermes/skills          (активные скиллы, индексируются Hermes)
-#   hermes-skills-lib   -> /root/hermes-skills-lib   (библиотека, публичный репо)
-#   hermes-triz-core    -> /root/hermes-triz-core    (ТРИЗ-ядро)
-#   eko-core            -> /root/eko-core            (ядро компетенций Устинова)
+#   hermes-skills-lib   -> <lib_root>/hermes-skills-lib   (библиотека, публичный репо)
+#   hermes-triz-core    -> <lib_root>/hermes-triz-core    (ТРИЗ-ядро)
+#   eko-core            -> <lib_root>/eko-core            (ядро компетенций Устинова)
 # 3 из 4 репозиториев приватные — нужен GitHub-токен (env GITHUB_TOKEN,
 # ~/.git-credentials или интерактивный ввод). Сам скрипт секретов не содержит.
 set -euo pipefail
@@ -20,6 +26,7 @@ set -euo pipefail
 GITHUB_USER="AllexandrKnife"
 BASE_DIR=""
 TOKEN=""
+MODE="${HERMES_INSTALL_MODE:-auto}"   # auto | root | user
 
 # --- Парсинг аргументов -------------------------------------------------------
 while [[ $# -gt 0 ]]; do
@@ -30,7 +37,8 @@ while [[ $# -gt 0 ]]; do
       ;;
     -h|--help)
       echo "Использование: install-skills.sh [--base-dir DIR]"
-      echo "  --base-dir DIR — префикс путей установки (по умолчанию: ~/.hermes/skills, /root/...)"
+      echo "  --base-dir DIR — префикс путей установки (для тестов)."
+      echo "  Режим: HERES_INSTALL_MODE=auto|root|user (auto: root если id -u == 0)."
       exit 0
       ;;
     *)
@@ -40,17 +48,34 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# --- Определение режима ----------------------------------------------------------
+if [[ "$MODE" == "auto" ]]; then
+  if [[ "$(id -u)" -eq 0 ]]; then MODE="root"; else MODE="user"; fi
+fi
+case "$MODE" in
+  root|user) ;;
+  *) echo "Ошибка: HERMES_INSTALL_MODE должен быть auto|root|user (получено: $MODE)" >&2; exit 2 ;;
+esac
+
 # --- Целевые каталоги ----------------------------------------------------------
+# lib_root: корень для трёх библиотек. В root-режиме — /root (пути зашиты в
+# оркестраторах), в user-режиме — $HOME (пути будут переписаны sed ниже).
+if [[ "$MODE" == "root" ]]; then
+  LIB_ROOT="/root"
+else
+  LIB_ROOT="$HOME"
+fi
+
 if [[ -n "$BASE_DIR" ]]; then
-  SKILLS_DIR="${BASE_DIR}/root/.hermes/skills"
-  LIB_DIR="${BASE_DIR}/root/hermes-skills-lib"
-  TRIZ_DIR="${BASE_DIR}/root/hermes-triz-core"
-  EKO_DIR="${BASE_DIR}/root/eko-core"
+  SKILLS_DIR="${BASE_DIR}/.hermes/skills"
+  LIB_DIR="${BASE_DIR}/hermes-skills-lib"
+  TRIZ_DIR="${BASE_DIR}/hermes-triz-core"
+  EKO_DIR="${BASE_DIR}/eko-core"
 else
   SKILLS_DIR="$HOME/.hermes/skills"
-  LIB_DIR="/root/hermes-skills-lib"
-  TRIZ_DIR="/root/hermes-triz-core"
-  EKO_DIR="/root/eko-core"
+  LIB_DIR="${LIB_ROOT}/hermes-skills-lib"
+  TRIZ_DIR="${LIB_ROOT}/hermes-triz-core"
+  EKO_DIR="${LIB_ROOT}/eko-core"
 fi
 
 # --- Токен ---------------------------------------------------------------------
@@ -87,21 +112,53 @@ clone_or_pull() {
   fi
   if [[ -d "$dir/.git" ]]; then
     echo "  $repo: уже установлен, обновляю (git pull)..."
+    # В user-режиме пути в hermes-skills переписаны sed'ом -> перед pull сбросить
+    # локальные правки, чтобы pull не упал на конфликте, потом применить sed заново.
+    if [[ "$repo" == "hermes-skills" && "$MODE" == "user" ]]; then
+      git -C "$dir" checkout -- . 2>/dev/null || true
+    fi
     git -C "$dir" pull --ff-only --quiet
+    if [[ "$repo" == "hermes-skills" && "$MODE" == "user" ]]; then
+      fix_paths "$dir"
+    fi
   elif [[ -d "$dir" ]] && [[ -n "$(ls -A "$dir" 2>/dev/null)" ]]; then
     echo "  $repo: каталог непустой (нет .git), клонирую через временный каталог..."
     tmp="$(mktemp -d)"
     git clone --depth 1 --quiet "$url" "$tmp/$repo"
     cp -a "$tmp/$repo/." "$dir/"
     rm -rf "$tmp"
+    if [[ "$repo" == "hermes-skills" && "$MODE" == "user" ]]; then
+      fix_paths "$dir"
+    fi
   else
     echo "  $repo: клонирую (--depth 1)..."
     git clone --depth 1 --quiet "$url" "$dir"
+    if [[ "$repo" == "hermes-skills" && "$MODE" == "user" ]]; then
+      fix_paths "$dir"
+    fi
+  fi
+}
+
+# --- Переписывание путей оркестраторов (только user-режим) ----------------------
+# Оркестраторы в hermes-skills ссылаются на библиотеки абсолютными путями /root/...
+# В user-режиме библиотеки лежат в $HOME/... (или ${BASE_DIR}/... в песочнице)
+# -> заменяем пути во всех .md файлах.
+fix_paths() {
+  local dir="$1" target n
+  target="${BASE_DIR:-$LIB_ROOT}"
+  n="$(grep -rlE '/root/(hermes-skills-lib|hermes-triz-core|eko-core)' "$dir" --include="*.md" 2>/dev/null | wc -l)"
+  if [[ "$n" -gt 0 ]]; then
+    grep -rlE '/root/(hermes-skills-lib|hermes-triz-core|eko-core)' "$dir" --include="*.md" 2>/dev/null \
+      | xargs sed -i \
+          -e "s|/root/hermes-skills-lib|${target}/hermes-skills-lib|g" \
+          -e "s|/root/hermes-triz-core|${target}/hermes-triz-core|g" \
+          -e "s|/root/eko-core|${target}/eko-core|g"
+    echo "  hermes-skills: пути оркестраторов переписаны /root/... -> ${target}/... ($n файлов)"
   fi
 }
 
 # --- Основная логика ------------------------------------------------------------
-echo "Установка скиллов Hermes (пользователь GitHub: ${GITHUB_USER})"
+echo "Установка скиллов Hermes (пользователь GitHub: ${GITHUB_USER}, режим: ${MODE})"
 mkdir -p "$SKILLS_DIR" "$LIB_DIR" "$TRIZ_DIR" "$EKO_DIR"
 
 # Токен нужен, только если хотя бы одно приватное репо ещё не установлено.
