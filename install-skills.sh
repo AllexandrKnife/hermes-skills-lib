@@ -23,6 +23,10 @@
 # ~/.git-credentials или интерактивный ввод). Сам скрипт секретов не содержит.
 set -euo pipefail
 
+# Версия скрипта (обновляется при значимых правках; выводится в отчёте —
+# если после пуша выполняется старая версия, видно сразу, CDN-кэш).
+SCRIPT_VERSION="2026-08-16+real-stash-xargs-trash"
+
 GITHUB_USER="AllexandrKnife"
 BASE_DIR=""
 TOKEN=""
@@ -84,7 +88,8 @@ get_token() {
     TOKEN="$GITHUB_TOKEN"
   elif [[ -f "$HOME/.git-credentials" ]]; then
     # форматы: https://TOKEN@github.com  или  https://user:TOKEN@github.com
-    TOKEN="$(grep -oE '(ghp_|github_pat_)[A-Za-z0-9_]+' "$HOME/.git-credentials" 2>/dev/null | head -1 || true)"
+    # Только строка с github.com (в файле может быть несколько хостов/токенов).
+    TOKEN="$(grep 'github.com' "$HOME/.git-credentials" 2>/dev/null | grep -oE '(ghp_|github_pat_)[A-Za-z0-9_]+' | head -1 || true)"
   fi
   if [[ -z "$TOKEN" ]]; then
     # При запуске через "curl ... | bash" stdin занят потоком из curl —
@@ -112,7 +117,7 @@ get_token() {
 #      -> клонировать во временный каталог и скопировать содержимое (включая скрытые файлы)
 #   3) пусто/нет каталога    -> git clone --depth 1
 clone_or_pull() {
-  local repo="$1" dir="$2" use_token="$3" url tmp
+  local repo="$1" dir="$2" use_token="$3" url tmp stashed
   if [[ "$use_token" == "yes" ]]; then
     url="https://${GITHUB_USER}:${TOKEN}@github.com/${GITHUB_USER}/${repo}.git"
   else
@@ -120,12 +125,26 @@ clone_or_pull() {
   fi
   if [[ -d "$dir/.git" ]]; then
     echo "  $repo: уже установлен, обновляю (git pull)..."
-    # В user-режиме пути в hermes-skills переписаны sed'ом -> перед pull сбросить
-    # локальные правки, чтобы pull не упал на конфликте, потом применить sed заново.
-    if [[ "$repo" == "hermes-skills" && "$MODE" == "user" ]]; then
-      git -C "$dir" checkout -- . 2>/dev/null || true
+    # В user-режиме пути в hermes-skills переписаны sed'ом -> перед pull сохранить
+    # локальные правки в stash (в т.ч. sed-замены и ручные правки пользователя),
+    # чтобы pull не упал на конфликте. После pull — вернуть stash.
+    stashed="no"
+    if [[ "$repo" == "hermes-skills" && "$MODE" == "user" ]] \
+       && [[ -n "$(git -C "$dir" status --porcelain 2>/dev/null)" ]]; then
+      if git -C "$dir" stash push -m "install-skills $(date +%Y%m%d_%H%M%S)" --quiet; then
+        stashed="yes"
+      else
+        echo "  $repo: ВНИМАНИЕ — не удалось сохранить локальные правки в stash" >&2
+      fi
     fi
     git -C "$dir" pull --ff-only --quiet
+    if [[ "$stashed" == "yes" ]]; then
+      # stash pop может конфликтовать с новыми файлами из pull — правки НЕ теряются,
+      # остаются в stash (git stash list). Это безопаснее, чем checkout -- . (потеря).
+      if ! git -C "$dir" stash pop --quiet 2>/dev/null; then
+        echo "  $repo: ВНИМАНИЕ — локальные правки остались в stash (git stash list), не потеряны" >&2
+      fi
+    fi
     if [[ "$repo" == "hermes-skills" && "$MODE" == "user" ]]; then
       fix_paths "$dir"
     fi
@@ -154,13 +173,16 @@ clone_or_pull() {
 fix_paths() {
   local dir="$1" target n
   target="${BASE_DIR:-$LIB_ROOT}"
-  n="$(grep -rlE '/root/(hermes-skills-lib|hermes-triz-core|eko-core)' "$dir" --include="*.md" 2>/dev/null | wc -l)"
+  n="$(grep -rlE '/root/(hermes-skills-lib|hermes-triz-core|eko-core)' "$dir" --include="*.md" 2>/dev/null | wc -l || true)"
   if [[ "$n" -gt 0 ]]; then
-    grep -rlE '/root/(hermes-skills-lib|hermes-triz-core|eko-core)' "$dir" --include="*.md" 2>/dev/null \
-      | xargs sed -i \
+    # -Z/-0: нуль-терминаторы — пути с пробелами/спецсимволами не разбиваются.
+    # || true: pipefail + grep без совпадений = exit 1, что при set -e убило бы
+    # скрипт на ПОВТОРНОМ запуске (пути уже переписаны) — баг 17.08.2026.
+    grep -rlZE '/root/(hermes-skills-lib|hermes-triz-core|eko-core)' "$dir" --include="*.md" 2>/dev/null \
+      | xargs -0 sed -i \
           -e "s|/root/hermes-skills-lib|${target}/hermes-skills-lib|g" \
           -e "s|/root/hermes-triz-core|${target}/hermes-triz-core|g" \
-          -e "s|/root/eko-core|${target}/eko-core|g"
+          -e "s|/root/eko-core|${target}/eko-core|g" || true
     echo "  hermes-skills: пути оркестраторов переписаны /root/... -> ${target}/... ($n файлов)"
   fi
 }
@@ -177,18 +199,27 @@ dedupe_skill_names() {
   [[ -d "$dir" ]] || return 0
   command -v python3 >/dev/null 2>&1 || { echo "  дедупликация: python3 не найден, пропуск"; return 0; }
   python3 - "$dir" <<'PYEOF'
-import os, re, sys, subprocess
+import os, re, sys, subprocess, time
 root = sys.argv[1]
 tracked = set()
+git_ok = True
 try:
     out = subprocess.run(["git", "-C", root, "ls-files"], capture_output=True, text=True, timeout=10)
     if out.returncode == 0:
         tracked = set(out.stdout.split())
+    else:
+        git_ok = False
 except Exception:
-    pass
+    git_ok = False
+if not git_ok:
+    # Каталог не git-репо — сравнивать не с чем, все скиллы выглядят untracked.
+    # Дедупликация отменяется (иначе можно удалить канонический). 
+    print("  дедупликация: каталог не git-репо — пропущено")
+    sys.exit(0)
 names = {}
 for dirpath, dirnames, filenames in os.walk(root):
-    if ".git" in dirpath.split(os.sep):
+    parts = dirpath.split(os.sep)
+    if ".git" in parts or ".trash" in parts:
         continue
     if "SKILL.md" in filenames:
         p = os.path.join(dirpath, "SKILL.md")
@@ -221,9 +252,16 @@ for nm, items in names.items():
             warned += 1
             continue
         d = os.path.dirname(os.path.join(root, rel))
-        import shutil
-        shutil.rmtree(d, ignore_errors=True)
-        print(f"  дедупликация: удалён дубль {nm}: {rel}")
+        # Безопасное удаление: переместить в .skill-trash ВНЕ skills-каталога
+        # (в ~/.hermes/) вместо rmtree — если в дубле были пользовательские файлы/
+        # чужой .git, их можно восстановить. ВАЖНО: корзина вне ~/.hermes/skills,
+        # иначе Hermes просканирует её как скилл и коллизия вернётся (EXCLUDED_SKILL_DIRS
+        # не содержит .trash — проверено 17.08.2026 по agent/skill_utils.py).
+        trash = os.path.join(os.path.dirname(root), ".skill-trash")
+        os.makedirs(trash, exist_ok=True)
+        dest = os.path.join(trash, os.path.basename(d) + "-" + str(int(time.time())))
+        os.rename(d, dest)
+        print(f"  дедупликация: дубль {nm} перемещён в корзину: {rel}")
         removed += 1
 print(f"  дедупликация: удалено {removed}, предупреждений {warned}" if removed or warned else "  дедупликация: коллизий не найдено")
 PYEOF
@@ -245,7 +283,7 @@ PYEOF
 WRAPPER_INSTALLED="no"
 
 setup_wrapper() {
-  local bin_path bin_dir real_path tmp_wrapper
+  local bin_path bin_dir real_path tmp_wrapper wrapper_real was_symlink
   if [[ -n "$BASE_DIR" ]]; then
     echo "  автозагрузка: обёртка пропущена (режим --base-dir, тест)"
     return 0
@@ -257,6 +295,8 @@ setup_wrapper() {
   fi
   real_path="$(readlink -f "$bin_path")"
   bin_dir="$(dirname "$bin_path")"
+  was_symlink="no"
+  [[ -L "$bin_path" ]] && was_symlink="yes"
 
   # БАГ 16.08.2026 (исправлен): cat > симлинк пишет в ЦЕЛЬ симлинка (venv/bin/hermes),
   # а не заменяет симлинк. Обёртка оказывалась в цели, оригинал терялся, запуск падал
@@ -266,6 +306,7 @@ setup_wrapper() {
     if [[ -f "$bin_dir/hermes.real" ]]; then
       cp -a "$bin_dir/hermes.real" "$real_path"   # восстановить испорченную цель
       rm -f "$bin_path"                            # убрать симлинк
+      was_symlink="yes"                            # оригинал остался в real_path
       echo "  автозагрузка: восстановлен оригинал hermes (симлинк-баг 16.08)"
     else
       echo "  автозагрузка: ОШИБКА — цель симлинка испорчена обёрткой, hermes.real не найден" >&2
@@ -286,26 +327,40 @@ setup_wrapper() {
     echo "  автозагрузка: не удалось сохранить оригинал $real_path" >&2
     return 1
   }
+  # REAL в обёртке — ЖИВОЙ оригинал, а не замороженная копия:
+  #   - bin_path был симлинком (или симлинк-баг восстановлен) → оригинал остался в
+  #     real_path (venv/bin/hermes) и обновляется через `hermes update` → REAL=real_path;
+  #   - bin_path был файлом → оригинал только в hermes.real (копия) → REAL=hermes.real.
+  # Fallback в обёртке: если REAL недоступен — переключиться на hermes.real.
+  if [[ "$was_symlink" == "yes" ]]; then
+    wrapper_real="$real_path"
+  else
+    wrapper_real="$bin_dir/hermes.real"
+  fi
   # Запись через временный файл + mv: mv ЗАМЕНЯЕТ симлинк обычным файлом,
   # а не пишет сквозь него в цель (в отличие от cat > "$bin_path").
   tmp_wrapper="$(mktemp "$bin_dir/hermes.wrapper.XXXXXX")"
-  cat > "$tmp_wrapper" <<'WRAPPER'
+  cat > "$tmp_wrapper" <<WRAPPER
 #!/usr/bin/env bash
 # hermes-skills preload wrapper: добавляет -s document-critic,ask-first,flash-pro-boost
 # для интерактивных сессий. Служебные подкоманды (gateway, cron, mcp, serve...) — без -s.
-# Оригинал сохранён рядом как hermes.real.
-REAL="$(dirname "$(readlink -f "$0")")/hermes.real"
-case "$1" in
+# REAL=${wrapper_real} (живой оригинал; обновляется через hermes update).
+# Бэкап: hermes.real рядом с обёрткой (fallback, если REAL недоступен).
+REAL="${wrapper_real}"
+if [[ ! -x "\$REAL" ]]; then
+  REAL="\$(dirname "\$(readlink -f "\$0")")/hermes.real"
+fi
+case "\$1" in
   gateway|cron|mcp|serve|acp|import|export|sessions|profile|completion|update|uninstall|version|help|--version|--help)
-    exec "$REAL" "$@"
+    exec "\$REAL" "\$@"
     ;;
 esac
-exec "$REAL" -s document-critic,ask-first,flash-pro-boost "$@"
+exec "\$REAL" -s document-critic,ask-first,flash-pro-boost "\$@"
 WRAPPER
   chmod +x "$tmp_wrapper"
   mv -f "$tmp_wrapper" "$bin_path"
   WRAPPER_INSTALLED="yes"
-  echo "  автозагрузка: обёртка установлена ($bin_path -> $bin_dir/hermes.real)"
+  echo "  автозагрузка: обёртка установлена ($bin_path -> REAL=${wrapper_real})"
 }
 
 setup_autoload() {
@@ -343,7 +398,16 @@ setup_autoload() {
 }
 
 # --- Основная логика ------------------------------------------------------------
-echo "Установка скиллов Hermes (пользователь GitHub: ${GITHUB_USER}, режим: ${MODE})"
+# Pre-flight: обязательные команды, понятная ошибка вместо "command not found"
+# на середине установки.
+for _cmd in git curl python3; do
+  if ! command -v "$_cmd" >/dev/null 2>&1; then
+    echo "Ошибка: $_cmd не установлен. Установите его и повторите запуск." >&2
+    exit 1
+  fi
+done
+
+echo "Установка скиллов Hermes (пользователь GitHub: ${GITHUB_USER}, режим: ${MODE}, скрипт v${SCRIPT_VERSION})"
 mkdir -p "$SKILLS_DIR" "$LIB_DIR" "$TRIZ_DIR" "$EKO_DIR"
 
 # Токен нужен, только если хотя бы одно приватное репо ещё не установлено.
@@ -382,5 +446,8 @@ for entry in "hermes-skills:$SKILLS_DIR" "hermes-skills-lib:$LIB_DIR" "hermes-tr
   hash="$(git -C "$dir" rev-parse --short HEAD 2>/dev/null || echo "N/A")"
   printf "  %-18s %s  %s\n" "$name" "$hash" "$dir"
 done
+echo "  скрипт: v${SCRIPT_VERSION} (если не последняя — CDN-кэш, повторите запуск)"
 echo
-echo "Готово. Перезапустите Hermes (новая сессия), чтобы скиллы подхватились."
+echo "Готово. Перезапустите Hermes (новая сессия), чтобы скиллы подхватились.
+Если установка прервалась (сеть/диск) — повторный запуск безопасен и доделает.
+sudo hermes не использует прелоад — запускайте hermes без sudo."
