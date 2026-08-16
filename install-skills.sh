@@ -181,7 +181,7 @@ fix_paths() {
 WRAPPER_INSTALLED="no"
 
 setup_wrapper() {
-  local bin_path bin_dir real_path
+  local bin_path bin_dir real_path tmp_wrapper
   if [[ -n "$BASE_DIR" ]]; then
     echo "  автозагрузка: обёртка пропущена (режим --base-dir, тест)"
     return 0
@@ -191,22 +191,41 @@ setup_wrapper() {
     echo "  автозагрузка: hermes не найден в PATH — обёртка пропущена"
     return 0
   fi
+  real_path="$(readlink -f "$bin_path")"
+  bin_dir="$(dirname "$bin_path")"
+
+  # БАГ 16.08.2026 (исправлен): cat > симлинк пишет в ЦЕЛЬ симлинка (venv/bin/hermes),
+  # а не заменяет симлинк. Обёртка оказывалась в цели, оригинал терялся, запуск падал
+  # с "venv/bin/hermes.real: No such file". Самовосстановление: если цель симлинка уже
+  # содержит нашу обёртку — вернуть оригинал из hermes.real и убрать симлинк.
+  if [[ -L "$bin_path" ]] && grep -q "hermes-skills preload wrapper" "$real_path" 2>/dev/null; then
+    if [[ -f "$bin_dir/hermes.real" ]]; then
+      cp -a "$bin_dir/hermes.real" "$real_path"   # восстановить испорченную цель
+      rm -f "$bin_path"                            # убрать симлинк
+      echo "  автозагрузка: восстановлен оригинал hermes (симлинк-баг 16.08)"
+    else
+      echo "  автозагрузка: ОШИБКА — цель симлинка испорчена обёрткой, hermes.real не найден" >&2
+      return 1
+    fi
+  fi
+
   if grep -q "hermes-skills preload wrapper" "$bin_path" 2>/dev/null; then
     echo "  автозагрузка: обёртка уже установлена ($bin_path)"
     WRAPPER_INSTALLED="yes"
     return 0
   fi
-  bin_dir="$(dirname "$bin_path")"
   if [[ ! -w "$bin_dir" ]]; then
     echo "  автозагрузка: нет прав на запись в $bin_dir — обёртка пропущена, использую alias"
     return 0
   fi
-  real_path="$(readlink -f "$bin_path")"
   cp -a "$real_path" "$bin_dir/hermes.real" || {
     echo "  автозагрузка: не удалось сохранить оригинал $real_path" >&2
     return 1
   }
-  cat > "$bin_path" <<'WRAPPER'
+  # Запись через временный файл + mv: mv ЗАМЕНЯЕТ симлинк обычным файлом,
+  # а не пишет сквозь него в цель (в отличие от cat > "$bin_path").
+  tmp_wrapper="$(mktemp "$bin_dir/hermes.wrapper.XXXXXX")"
+  cat > "$tmp_wrapper" <<'WRAPPER'
 #!/usr/bin/env bash
 # hermes-skills preload wrapper: добавляет -s document-critic,ask-first,flash-pro-boost
 # для интерактивных сессий. Служебные подкоманды (gateway, cron, mcp, serve...) — без -s.
@@ -219,7 +238,8 @@ case "$1" in
 esac
 exec "$REAL" -s document-critic,ask-first,flash-pro-boost "$@"
 WRAPPER
-  chmod +x "$bin_path"
+  chmod +x "$tmp_wrapper"
+  mv -f "$tmp_wrapper" "$bin_path"
   WRAPPER_INSTALLED="yes"
   echo "  автозагрузка: обёртка установлена ($bin_path -> $bin_dir/hermes.real)"
 }
