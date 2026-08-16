@@ -87,11 +87,19 @@ get_token() {
     TOKEN="$(grep -oE '(ghp_|github_pat_)[A-Za-z0-9_]+' "$HOME/.git-credentials" 2>/dev/null | head -1 || true)"
   fi
   if [[ -z "$TOKEN" ]]; then
-    read -r -s -p "GitHub token (приватные репо): " TOKEN
-    echo
+    # При запуске через "curl ... | bash" stdin занят потоком из curl —
+    # read из stdin вернёт EOF. Читаем с терминала напрямую (/dev/tty).
+    if [[ -r /dev/tty ]]; then
+      read -r -s -p "GitHub token (приватные репо): " TOKEN < /dev/tty
+      echo
+    fi
   fi
   if [[ -z "$TOKEN" ]]; then
-    echo "Ошибка: токен не получен. Задайте GITHUB_TOKEN или ~/.git-credentials." >&2
+    echo "Ошибка: токен не получен." >&2
+    echo "Передайте его в команде (токен не попадёт в скрипт, только в окружение):" >&2
+    echo "  curl -fsSL https://raw.githubusercontent.com/AllexandrKnife/hermes-skills-lib/main/install-skills.sh | GITHUB_TOKEN=<ваш-токен> bash" >&2
+    echo "или положите его в ~/.git-credentials (формат: https://USER:TOKEN@github.com)." >&2
+    echo "Где взять токен: GitHub → Settings → Developer settings → Personal access tokens." >&2
     exit 1
   fi
 }
