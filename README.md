@@ -1,4 +1,4 @@
-# hermes-skills-lib — библиотека доменных скиллов (вариант В)
+# hermes-skills-lib — библиотека доменных скиллов
 
 Вынесенные из ~/.hermes/skills доменные скиллы: в Hermes остаются только
 оркестраторы (network-infra, hermes-agent, osint, github-workflow, academic,
