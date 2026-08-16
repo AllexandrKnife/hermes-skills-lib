@@ -165,6 +165,70 @@ fix_paths() {
   fi
 }
 
+# --- Дедупликация имён скиллов --------------------------------------------------
+# Коллизия: два SKILL.md с одинаковым name в frontmatter. Резолвер Hermes при
+# коллизии возвращает None (молча пропускает скилл) — прелоад не срабатывает
+# (кейс flash-pro-boost 16.08.2026). Правило: канонический — tracked в git
+# (из репо hermes-skills, в категории); untracked дубли (мусор установки/
+# копирования) удаляются. Tracked-коллизии (оба в git — проблема репо)
+# НЕ удаляются, выводят предупреждение.
+dedupe_skill_names() {
+  local dir="$1"
+  [[ -d "$dir" ]] || return 0
+  command -v python3 >/dev/null 2>&1 || { echo "  дедупликация: python3 не найден, пропуск"; return 0; }
+  python3 - "$dir" <<'PYEOF'
+import os, re, sys, subprocess
+root = sys.argv[1]
+tracked = set()
+try:
+    out = subprocess.run(["git", "-C", root, "ls-files"], capture_output=True, text=True, timeout=10)
+    if out.returncode == 0:
+        tracked = set(out.stdout.split())
+except Exception:
+    pass
+names = {}
+for dirpath, dirnames, filenames in os.walk(root):
+    if ".git" in dirpath.split(os.sep):
+        continue
+    if "SKILL.md" in filenames:
+        p = os.path.join(dirpath, "SKILL.md")
+        rel = os.path.relpath(p, root)
+        try:
+            txt = open(p, encoding="utf-8", errors="replace").read(3000)
+            m = re.search(r"^name:\s*(\S+)", txt, re.M)
+            if m:
+                names.setdefault(m.group(1), []).append((rel, rel in tracked))
+        except Exception:
+            continue
+removed = 0
+warned = 0
+for nm, items in names.items():
+    if len(items) < 2:
+        continue
+    tracked_items = [i for i in items if i[1]]
+    if len(tracked_items) == len(items):
+        # все в git — коллизия в репо, руками
+        print(f"  дедупликация: КОЛЛИЗИЯ В РЕПО (не трогаю) {nm}: " + "; ".join(i[0] for i in items))
+        warned += 1
+        continue
+    # канонический — tracked (в категории, из репо)
+    keep = tracked_items[0][0] if tracked_items else max(items, key=lambda i: i[0].count("/"))[0]
+    for rel, tr in items:
+        if rel == keep:
+            continue
+        if tr:
+            print(f"  дедупликация: tracked-дубль {nm}: {rel} (не трогаю)")
+            warned += 1
+            continue
+        d = os.path.dirname(os.path.join(root, rel))
+        import shutil
+        shutil.rmtree(d, ignore_errors=True)
+        print(f"  дедупликация: удалён дубль {nm}: {rel}")
+        removed += 1
+print(f"  дедупликация: удалено {removed}, предупреждений {warned}" if removed or warned else "  дедупликация: коллизий не найдено")
+PYEOF
+}
+
 # --- Автозагрузка ключевых скиллов ----------------------------------------------
 # Три скилла (document-critic, ask-first, flash-pro-boost) должны грузиться в
 # каждую сессию автоматически. Механизмы (см. hermes-skill-autoload):
@@ -302,6 +366,9 @@ clone_or_pull "hermes-triz-core" "$TRIZ_DIR" "yes"
 
 echo "[4/5] eko-core -> $EKO_DIR"
 clone_or_pull "eko-core" "$EKO_DIR" "yes"
+
+echo "[4b] дедупликация имён скиллов (коллизии блокируют прелоад)"
+dedupe_skill_names "$SKILLS_DIR"
 
 echo "[5/5] автозагрузка скиллов (document-critic, ask-first, flash-pro-boost)"
 setup_autoload
