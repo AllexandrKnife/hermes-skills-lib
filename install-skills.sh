@@ -167,16 +167,12 @@ clone_or_pull() {
       fix_paths "$dir"
     fi
   fi
-  # КР-1 (17.08.2026): git сохраняет URL с токеном в .git/config после clone —
-  # убрать токен из remote, оставить чистый https://github.com/... (креды берутся
-  # из ~/.git-credentials или GITHUB_TOKEN при следующем pull). Также лечит
-  # «двойной github.com» от битой ручной чистки. Идемпотентно: если URL уже чист —
-  # ничего не меняет.
-  clean_url="$(git -C "$dir" remote get-url origin 2>/dev/null | sed -E 's#https?://[^@/]*@#https://#; s#github\.com/github\.com#github.com#' || true)"
-  if [[ -n "$clean_url" ]] && [[ "$clean_url" != "$(git -C "$dir" remote get-url origin 2>/dev/null || true)" ]]; then
-    git -C "$dir" remote set-url origin "$clean_url"
-    echo "  $repo: remote очищен от токена -> $clean_url"
-  fi
+  # КР-1 (17.08.2026): git сохраняет URL с токеном в .git/config после clone.
+  # ВАЖНО: не парсить старый URL (были случаи: токен в URL, «двойной github.com»,
+  # «github.com/https://github.com» от битых ручных чистк) — всегда ставить
+  # канонический https://github.com/<user>/<repo>.git. Креды берутся из
+  # ~/.git-credentials (credential.helper store). Идемпотентно.
+  git -C "$dir" remote set-url origin "https://github.com/${GITHUB_USER}/${repo}.git"
 }
 
 # --- Переписывание путей оркестраторов (только user-режим) ----------------------
@@ -230,9 +226,22 @@ if not git_ok:
     print("  дедупликация: каталог не git-репо — пропущено")
     sys.exit(0)
 names = {}
+# Исключаемые каталоги: служебные (как EXCLUDED_SKILL_DIRS в Hermes) —
+# .archive/.git/.github/.hub/.venv и т.п. + вложенные каталоги внутри скиллов.
+EXCLUDED = {".git", ".github", ".hub", ".archive", ".venv", "venv", "node_modules",
+            "references", "templates", "assets", "scripts"}
 for dirpath, dirnames, filenames in os.walk(root):
     parts = dirpath.split(os.sep)
-    if ".git" in parts or ".trash" in parts:
+    if any(p in EXCLUDED for p in parts):
+        dirnames[:] = []
+        continue
+    # Только корневые скиллы: root/<skill>/SKILL.md (depth 1) или
+    # root/<cat>/<skill>/SKILL.md (depth 2). Вложенные SKILL.md внутри скилла
+    # (depth 3+, напр. security/reverse-skill/browser-automation/SKILL.md) —
+    # НЕ скиллы, пропуск.
+    depth = len(parts) - len(root.split(os.sep))
+    if depth > 2:
+        dirnames[:] = []
         continue
     if "SKILL.md" in filenames:
         p = os.path.join(dirpath, "SKILL.md")

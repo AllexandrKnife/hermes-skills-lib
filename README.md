@@ -53,8 +53,15 @@ curl -fsSL https://raw.githubusercontent.com/AllexandrKnife/hermes-skills-lib/ma
 
 Дедупликация: после клонирования скрипт проверяет коллизии имён SKILL.md (два
 скилла с одинаковым name в frontmatter — резолвер Hermes при коллизии молча
-пропускает скилл, прелоад не срабатывает). Untracked дубли (мусор установки/
+пропускает скилл, прелоад не срабатывает). Сканируются ТОЛЬКО корневые скиллы
+(root/<skill> или root/<cat>/<skill>) — .archive, references/templates/scripts и
+вложенные каталоги внутри скиллов не трогаются. Untracked дубли (мусор установки/
 копирования) перемещаются в ~/.hermes/.skill-trash/ (восстановимо, вне skills —
 Hermes их не индексирует), канонический (tracked, из репо) сохраняется. Коллизии
 внутри git-репо (оба tracked) не трогаются — выводят предупреждение.
+
+Remote: после клонирования/обновления origin всегда ставится каноническим
+(https://github.com/AllexandrKnife/<repo>.git) — токен не остаётся в .git/config,
+лечатся битые URL от ручных правок. Креды берутся из ~/.git-credentials
+(скрипт сохраняет токен туда с chmod 600, если github.com-строки нет).
 
