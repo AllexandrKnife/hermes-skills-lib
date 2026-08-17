@@ -25,7 +25,7 @@ egress-IP через VPN-туннель на VPS.
 - 46.30.47.120 (Амстердам) — нативный WireGuard wg0:54711, подсеть 10.77.77.0/24,
   11 клиентов. Пир для WSL: 10.77.77.6 (оставлен как запасной).
 - 87.121.38.60 (babayka.duckdns.org) — Amnezia AWG :30772, WG :36614.
-- SSH: root/1qsxdrgb (все три, sshpass).
+- SSH: root/VPS_ROOT_PASSWORD_PLACEHOLDER (все три, sshpass).
 
 ## Грабли WSL-клиента
 

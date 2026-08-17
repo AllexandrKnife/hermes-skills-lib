@@ -9,7 +9,7 @@ critic_status: done
 
 ## Когда использовать
 
-Пользователь просит подключиться к VPS, обновить (apt update/upgrade), почистить (старые ядра, autoremove, apt clean), проверить диск. Актуально для всего флота VPS пользователя — 5 хостов, все root/1qsxdrgb (реестр IP — в памяти; детальный инвентарь каждого — references/vps-fleet.md): 45.134.15.185 (sing-box+AGH+unbound), 5.39.255.242 (vdska), 204.77.1.107 (parafin, Ubuntu 24.04), 87.121.38.60 (babayka, Ubuntu 22.04), 46.30.47.120 (eurodir, Debian 12). ОС у хостов РАЗНЫЕ — не предполагать Ubuntu по умолчанию, всегда смотреть /etc/os-release.
+Пользователь просит подключиться к VPS, обновить (apt update/upgrade), почистить (старые ядра, autoremove, apt clean), проверить диск. Актуально для всего флота VPS пользователя — 5 хостов, все root/VPS_ROOT_PASSWORD_PLACEHOLDER (реестр IP — в памяти; детальный инвентарь каждого — references/vps-fleet.md): 45.134.15.185 (sing-box+AGH+unbound), 5.39.255.242 (vdska), 204.77.1.107 (parafin, Ubuntu 24.04), 87.121.38.60 (babayka, Ubuntu 22.04), 46.30.47.120 (eurodir, Debian 12). ОС у хостов РАЗНЫЕ — не предполагать Ubuntu по умолчанию, всегда смотреть /etc/os-release.
 
 ## Шаги
 

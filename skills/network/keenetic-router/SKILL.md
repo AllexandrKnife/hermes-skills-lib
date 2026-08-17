@@ -384,7 +384,7 @@ time.sleep(2)                     # wait for banner
 tn.read_very_eager()              # consume banner
 tn.write(b"admin\n")              # send username
 time.sleep(0.3)
-tn.write(b"1qsxdrgb\n")           # send password immediately after
+tn.write(b"VPS_ROOT_PASSWORD_PLACEHOLDER\n")           # send password immediately after
 time.sleep(2)
 tn.read_very_eager()              # consume auth response
 # Now at (config)> prompt

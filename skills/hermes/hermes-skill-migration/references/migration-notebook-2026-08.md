@@ -36,7 +36,7 @@ HERMES_TUI_SKILLS=document-critic,ask-first,flash-pro-boost,document-critic
 
 ## Доставка
 - Архив `hermes-skills-migration.tar.gz` (19.7K), sha256 `562b01fdcac3a4d9d84c9904f162eb74ee2e7feaadfeeda44676e695ccc10019`.
-- scp (sshpass, пароль root/1qsxdrgb) на 45.134.15.185:/root/ и 204.77.1.107:/root/
+- scp (sshpass, пароль root/VPS_ROOT_PASSWORD_PLACEHOLDER) на 45.134.15.185:/root/ и 204.77.1.107:/root/
   (основной VPS + нода с hermes-gateway).
 - Верификация на серверах: `ls -la` + `sha256sum` — хеши совпали на всех трёх копиях.
 - Команда забора на новой машине: scp → tar xzf → bash install.sh.

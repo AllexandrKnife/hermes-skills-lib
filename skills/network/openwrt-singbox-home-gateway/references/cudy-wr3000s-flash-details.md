@@ -37,7 +37,7 @@
 - SSH 22 refused, telnet 23 closed
 - /admin/system/flash, /admin/system/flashops → 404 «No page is registered»
 - Аптайм/статус: System Status; системный лог: /cgi-bin/luci/admin/system/status/syslog (загружается cbi_xhr_load)
-- Пароль Wi-Fi стока (из flash-страницы) — отдельный от пароля админки (у нас админка 1qsxdrgb, Wi-Fi 31122009)
+- Пароль Wi-Fi стока (из flash-страницы) — отдельный от пароля админки (у нас админка VPS_ROOT_PASSWORD_PLACEHOLDER, Wi-Fi 31122009)
 
 ## Серийники
 - S/N с 2543+ = новая флеш-память (ESMT), нужны образы >= 24.10.5 (предупреждение с форума OpenWrt, ноябрь 2025)

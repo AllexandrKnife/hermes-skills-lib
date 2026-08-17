@@ -14,7 +14,7 @@ critic_status: done
 - Привязка DNS туннеля к своему AdGuardHome
 
 ## Общая схема
-VPS пользователя: root/1qsxdrgb (реестр в памяти). Выходной интерфейс — ens18; проверять через /proc/net/route (`ip` может отсутствовать, см. Pitfalls).
+VPS пользователя: root/VPS_ROOT_PASSWORD_PLACEHOLDER (реестр в памяти). Выходной интерфейс — ens18; проверять через /proc/net/route (`ip` может отсутствовать, см. Pitfalls).
 Типовой стек одного VPS: sing-box (прокси) + WireGuard (туннель роутера); DNS — AdGuardHome+unbound на отдельном VPS (45.134.15.185, слушает *:53).
 
 ## 1. Установка sing-box (sb.sh, yonggekkk)

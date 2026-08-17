@@ -63,4 +63,4 @@ VLESS+Reality на 45.134.15.185: порт 39261, SNI apple.com, short_id f77680
 публичный ключ Reality: `ryADwFj6VRw2B9jL2Ubs8q0oIZVbngIB6ErCCwk3djw`.
 WireGuard на 46.30.47.120: wg0:54711, подсеть 10.77.77.0/24, публичный ключ сервера
 `SqQsxjdGLKHt2+VpVIt2OJCWeUKs1jzTvz1OEVr+aDo=`, свободные пиры .6/.7/.8.
-SSH: root / пароль 1qsxdrgb на всех VPS (см. references/vps-inventory.md в vps-adguard-dns-integration).
+SSH: root / пароль VPS_ROOT_PASSWORD_PLACEHOLDER на всех VPS (см. references/vps-inventory.md в vps-adguard-dns-integration).

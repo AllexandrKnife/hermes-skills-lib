@@ -114,7 +114,7 @@ When asked to clean C: drive:
 
 ## Shell
 - bash (default), user 'user', no passwordless sudo
-- sudo password: 1qsxdrgb
+- sudo password: VPS_ROOT_PASSWORD_PLACEHOLDER
 - Cyryllic Windows username: Пухаткин → 8.3 short name: 0C7E~1
 
 ## WSL Config
@@ -153,11 +153,11 @@ localhostForwarding = true
 - Access from WSL requires netsh portproxy + firewall rule (see references/chat2api-proxy-setup.md)
 
 ## Router (Keenetic 4G KN-1210)
-- IP: 192.168.1.1, admin/1qsxdrgb
+- IP: 192.168.1.1, admin/VPS_ROOT_PASSWORD_PLACEHOLDER
 - Firmware: NDMS 3.07.C.5.0-0
 - 3 WireGuard tunnels: MyNL (10.77.77.14), MSK (10.77.88.4), GeR (10.8.1.3)
 
 ## VPS MyNL
-- IP: 46.30.47.120, Debian 12, root/1qsxdrgb
+- IP: 46.30.47.120, Debian 12, root/VPS_ROOT_PASSWORD_PLACEHOLDER
 - WireGuard wg0: 10.77.77.1/24, 14 peers
 - 1 vCPU, 457MB RAM, 9.8GB disk (3.8GB free)

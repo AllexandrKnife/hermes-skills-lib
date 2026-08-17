@@ -173,7 +173,7 @@ time.sleep(2)
 tn.read_very_eager()
 tn.write(b"admin\n")
 time.sleep(0.3)
-tn.write(b"1qsxdrgb\n")
+tn.write(b"VPS_ROOT_PASSWORD_PLACEHOLDER\n")
 time.sleep(2)
 # Now at (config)> prompt
 ```

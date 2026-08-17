@@ -111,7 +111,7 @@ dig @127.0.0.1 google.com +short         # → 142.250.x.x
 # Фильтр загружен
 curl -s -X POST http://127.0.0.1:3000/control/login \
   -H 'Content-Type: application/json' \
-  -d '{"name":"admin","password":"1qsxdrgb"}' -c /tmp/ag-cookies.txt
+  -d '{"name":"admin","password":"VPS_ROOT_PASSWORD_PLACEHOLDER"}' -c /tmp/ag-cookies.txt
 
 curl -s http://127.0.0.1:3000/control/filtering/status \
   -b /tmp/ag-cookies.txt

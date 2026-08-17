@@ -4,7 +4,7 @@
 - Хост: vdska, Ubuntu 22.04.2 LTS → 22.04.5 LTS после переустановки, kernel 5.15.0-76, KVM
 - Регион: Германия, Франкфурт (VDSka hosting / abstation.net), IPv4 only
 - RAM 957 MiB, диск 15G
-- Доступ: root / 1qsxdrgb (общий пароль всех VPS юзера)
+- Доступ: root / VPS_ROOT_PASSWORD_PLACEHOLDER (общий пароль всех VPS юзера)
 
 ## Установка
 - sing-box-yg скрипт v26.4.11, ядро sing-box 1.13.16 (стабильное)

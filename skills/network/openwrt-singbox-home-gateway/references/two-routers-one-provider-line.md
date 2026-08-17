@@ -35,7 +35,7 @@ WISP = роутер принимает Wi-Fi провайдера/соседне
 
 ## Текущая домашняя схема (08.2026, работает)
 - Keenetic: кабель провайдера → WAN, поднимает PPPoE, раздаёт обычный интернет БЕЗ туннелей (Keenetic-0180).
-- Cudy WR3000S (сток 2.4.6 RU, 192.168.10.1, admin/1qsxdrgb): WISP от Keenetic-0180
+- Cudy WR3000S (сток 2.4.6 RU, 192.168.10.1, admin/VPS_ROOT_PASSWORD_PLACEHOLDER): WISP от Keenetic-0180
   (интернет по Wi-Fi от Keenetic) + WireGuard Client GeR (10.8.1.7 → 45.134.15.185:37487),
   раздаёт Cudy-B014 / Cudy-B014-5G (пароль 31122009).
 - Разделение «VPN-по-выбору-Wi-Fi»: кто к Cudy — через туннель, кто к Keenetic — напрямую.

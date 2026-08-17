@@ -175,7 +175,7 @@ source vpn-env.sh [46|vdska|185]           # прокси в текущую се
 SSH-ключи на VPS не настроены — вход по паролю через sshpass:
 
 ```bash
-sshpass -p '1qsxdrgb' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+sshpass -p 'VPS_ROOT_PASSWORD_PLACEHOLDER' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
   -o UserKnownHostsFile=/dev/null root@45.134.15.185 'hostname; uptime'
 ```
 
@@ -258,7 +258,7 @@ sshpass -p '1qsxdrgb' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
   результат фактически (ls/stat). Надёжный способ тянуть файлы/папки с VPS — tar через
   ssh-pipe:
   ```bash
-  sshpass -p '1qsxdrgb' ssh -o StrictHostKeyChecking=no root@45.134.15.185 \
+  sshpass -p 'VPS_ROOT_PASSWORD_PLACEHOLDER' ssh -o StrictHostKeyChecking=no root@45.134.15.185 \
     'cd /root/.hermes/skills && tar czf - <dir1> <dir2>' > /tmp/skills.tar.gz
   tar xzf /tmp/skills.tar.gz -C /   # относительные пути лягут от корня / !
   ```

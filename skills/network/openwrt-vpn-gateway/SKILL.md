@@ -33,7 +33,7 @@ tags: [openwrt, vpn, sing-box, vless, reality, mt7981, filogic, cudy, router]
 
 - Cudy WR3000S v1 = главный роутер: LAN 192.168.10.1 (не 192.168.1.1!),
   WAN PPPoE (логин M570795), WiFi Cudy-B014 / Cudy-B014-5G (пароль
-  31122009), SSH root / 1qsxdrgb
+  31122009), SSH root / VPS_ROOT_PASSWORD_PLACEHOLDER
 - VPN: sing-box tun → VLESS+Reality → 45.134.15.185:443 (сервер 185 —
   дефолт флота; vdska 5.39.255.242 мёртв, не использовать)
 - Keenetic (192.168.1.1) → в режим точки доступа
