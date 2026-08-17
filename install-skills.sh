@@ -182,6 +182,35 @@ clone_or_pull() {
   git -C "$dir" remote set-url origin "https://github.com/${GITHUB_USER}/${repo}.git"
 }
 
+# --- Починка симлинка reviewer.py (document-critic → flash-pro-boost) ----------
+# Слой 9 document-critic использует общий reviewer.py из flash-pro-boost через
+# симлинк. Симлинк должен быть ОТНОСИТЕЛЬНЫМ (работает на любой машине). Если в
+# репо/старой установке он абсолютный (/root/...) — на user-машине битый
+# (readlink -f не резолвится) → слой 9 и skill_manage ломаются. Пересоздаём.
+fix_reviewer_symlink() {
+  local dc_scripts target_rel current
+  dc_scripts="$SKILLS_DIR/productivity/document-critic/scripts"
+  target_rel="../../../software-development/flash-pro-boost/scripts/reviewer.py"
+  [[ -d "$dc_scripts" ]] || return 0
+  if [[ ! -e "$dc_scripts/reviewer.py" ]] && [[ -L "$dc_scripts/reviewer.py" ]]; then
+    # битый симлинк: цель не существует (абсолютный путь чужой машины)
+    rm -f "$dc_scripts/reviewer.py"
+    ln -s "$target_rel" "$dc_scripts/reviewer.py"
+    echo "  document-critic: симлинк reviewer.py пересоздан (относительный: $target_rel)"
+  elif [[ -L "$dc_scripts/reviewer.py" ]]; then
+    current="$(readlink "$dc_scripts/reviewer.py")"
+    if [[ "$current" != /* ]] && [[ "$current" != "../../../software-development/"* ]]; then
+      rm -f "$dc_scripts/reviewer.py"
+      ln -s "$target_rel" "$dc_scripts/reviewer.py"
+      echo "  document-critic: симлинк reviewer.py исправлен на относительный ($current -> $target_rel)"
+    fi
+  elif [[ ! -e "$dc_scripts/reviewer.py" ]]; then
+    # нет ни файла, ни симлинка — создать
+    ln -s "$target_rel" "$dc_scripts/reviewer.py"
+    echo "  document-critic: симлинк reviewer.py создан ($target_rel)"
+  fi
+}
+
 # --- Установка скриптов схемы воркеров (agent-pair-pilot) ----------------------
 # Копирует two-workers.sh и qwen-task.sh из репо в <scripts_dir>.
 # В user-режиме дефолтные пути /root/... в скриптах переписываются на
@@ -528,6 +557,9 @@ dedupe_skill_names "$SKILLS_DIR"
 
 echo "[8/8] автозагрузка скиллов (document-critic, ask-first, flash-pro-boost)"
 setup_autoload
+
+# Починка симлинка reviewer.py — после установки hermes-skills (слой 9 document-critic)
+fix_reviewer_symlink
 
 # --- Отчёт -----------------------------------------------------------------------
 echo
