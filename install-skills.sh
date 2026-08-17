@@ -198,36 +198,46 @@ install_pair_scripts() {
   fi
   mkdir -p "$dst_dir"
   cp -a "$scripts_src/two-workers.sh" "$scripts_src/qwen-task.sh" "$dst_dir/"
+  # deepseek_call.py — 3-й скрипт схемы (есть в репо) — тоже копируем
+  if [[ -f "$scripts_src/deepseek_call.py" ]]; then
+    cp -a "$scripts_src/deepseek_call.py" "$dst_dir/"
+  fi
   if [[ "$MODE" == "user" ]]; then
     sed -i \
       -e "s|/root/sbbp-case|${prefix}/sbbp-case|g" \
       -e "s|/root/scripts|${prefix}/scripts|g" \
-      "$dst_dir/two-workers.sh" "$dst_dir/qwen-task.sh" 2>/dev/null || true
+      -e "s|/root/.hermes/.env|${HOME}/.hermes/.env|g" \
+      "$dst_dir/two-workers.sh" "$dst_dir/qwen-task.sh" "$dst_dir/deepseek_call.py" 2>/dev/null || true
     echo "  agent-pair-pilot: скрипты установлены в $dst_dir (пути переписаны /root/... -> ${prefix}/...)"
   else
     echo "  agent-pair-pilot: скрипты установлены в $dst_dir"
   fi
   chmod +x "$dst_dir/two-workers.sh" "$dst_dir/qwen-task.sh"
+  chmod +x "$dst_dir/deepseek_call.py" 2>/dev/null || true
 }
 
 # --- Переписывание путей оркестраторов (только user-режим) ----------------------
 # Оркестраторы в hermes-skills ссылаются на библиотеки абсолютными путями /root/...
 # В user-режиме библиотеки лежат в $HOME/... (или ${BASE_DIR}/... в песочнице)
-# -> заменяем пути во всех .md файлах.
+# -> заменяем пути во всех .md файлах. Помимо 4 библиотек — системные каталоги
+# схемы воркеров: /root/scripts и /root/sbbp-case (агент-pair-pilot: скрипты, роли).
 fix_paths() {
   local dir="$1" target n
   target="${BASE_DIR:-$LIB_ROOT}"
-  n="$(grep -rlE '/root/(hermes-skills-lib|hermes-triz-core|eko-core|hermes-soul)' "$dir" --include="*.md" 2>/dev/null | wc -l || true)"
+  n="$(grep -rlE '/root/(hermes-skills-lib|hermes-triz-core|eko-core|hermes-soul|scripts|sbbp-case)' "$dir" --include="*.md" 2>/dev/null | wc -l || true)"
   if [[ "$n" -gt 0 ]]; then
     # -Z/-0: нуль-терминаторы — пути с пробелами/спецсимволами не разбиваются.
     # || true: pipefail + grep без совпадений = exit 1, что при set -e убило бы
     # скрипт на ПОВТОРНОМ запуске (пути уже переписаны) — баг 17.08.2026.
-    grep -rlZE '/root/(hermes-skills-lib|hermes-triz-core|eko-core|hermes-soul)' "$dir" --include="*.md" 2>/dev/null \
+    grep -rlZE '/root/(hermes-skills-lib|hermes-triz-core|eko-core|hermes-soul|scripts|sbbp-case|\.hermes)' "$dir" --include="*.md" 2>/dev/null \
       | xargs -0 sed -i \
           -e "s|/root/hermes-skills-lib|${target}/hermes-skills-lib|g" \
           -e "s|/root/hermes-triz-core|${target}/hermes-triz-core|g" \
           -e "s|/root/eko-core|${target}/eko-core|g" \
-          -e "s|/root/hermes-soul|${target}/hermes-soul|g" || true
+          -e "s|/root/hermes-soul|${target}/hermes-soul|g" \
+          -e "s|/root/scripts|${target}/scripts|g" \
+          -e "s|/root/sbbp-case|${target}/sbbp-case|g" \
+          -e "s|/root/.hermes|${target}/.hermes|g" || true
     echo "  hermes-skills: пути оркестраторов переписаны /root/... -> ${target}/... ($n файлов)"
   fi
 }
