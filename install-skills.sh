@@ -9,23 +9,24 @@
 #     --base-dir DIR — префикс для путей установки (для тестирования в песочнице).
 #
 # Режимы (автоопределение, переопределяется через HERMES_INSTALL_MODE):
-#   root (id -u == 0):  библиотеки -> /root/hermes-skills-lib, /root/hermes-triz-core, /root/eko-core
-#   user (иначе):       библиотеки -> $HOME/hermes-skills-lib, $HOME/hermes-triz-core, $HOME/eko-core
+#   root (id -u == 0):  библиотеки -> /root/hermes-skills-lib, /root/hermes-triz-core, /root/eko-core, /root/hermes-soul
+#   user (иначе):       библиотеки -> $HOME/hermes-skills-lib, $HOME/hermes-triz-core, $HOME/eko-core, $HOME/hermes-soul
 #                       + sed-замена /root/... -> $HOME/... в скиллах (оркестраторы ссылаются
 #                         на библиотеки абсолютными путями; в user-режиме пути переписываются).
 #
-# Устанавливает 4 репозитория:
+# Устанавливает 5 репозиториев:
 #   hermes-skills       -> ~/.hermes/skills          (активные скиллы, индексируются Hermes)
 #   hermes-skills-lib   -> <lib_root>/hermes-skills-lib   (библиотека, публичный репо)
 #   hermes-triz-core    -> <lib_root>/hermes-triz-core    (ТРИЗ-ядро)
 #   eko-core            -> <lib_root>/eko-core            (ядро компетенций Устинова)
-# 3 из 4 репозиториев приватные — нужен GitHub-токен (env GITHUB_TOKEN,
+#   hermes-soul         -> <lib_root>/hermes-soul          (версионирование SOUL.md)
+# 4 из 5 репозиториев приватные — нужен GitHub-токен (env GITHUB_TOKEN,
 # ~/.git-credentials или интерактивный ввод). Сам скрипт секретов не содержит.
 set -euo pipefail
 
 # Версия скрипта (обновляется при значимых правках; выводится в отчёте —
 # если после пуша выполняется старая версия, видно сразу, CDN-кэш).
-SCRIPT_VERSION="2026-08-16+real-stash-xargs-trash"
+SCRIPT_VERSION="2026-08-17+hermes-soul"
 
 GITHUB_USER="AllexandrKnife"
 BASE_DIR=""
@@ -42,7 +43,7 @@ while [[ $# -gt 0 ]]; do
     -h|--help)
       echo "Использование: install-skills.sh [--base-dir DIR]"
       echo "  --base-dir DIR — префикс путей установки (для тестов)."
-      echo "  Режим: HERES_INSTALL_MODE=auto|root|user (auto: root если id -u == 0)."
+      echo "  Режим: HERMES_INSTALL_MODE=auto|root|user (auto: root если id -u == 0)."
       exit 0
       ;;
     *)
@@ -75,11 +76,13 @@ if [[ -n "$BASE_DIR" ]]; then
   LIB_DIR="${BASE_DIR}/hermes-skills-lib"
   TRIZ_DIR="${BASE_DIR}/hermes-triz-core"
   EKO_DIR="${BASE_DIR}/eko-core"
+  SOUL_DIR="${BASE_DIR}/hermes-soul"
 else
   SKILLS_DIR="$HOME/.hermes/skills"
   LIB_DIR="${LIB_ROOT}/hermes-skills-lib"
   TRIZ_DIR="${LIB_ROOT}/hermes-triz-core"
   EKO_DIR="${LIB_ROOT}/eko-core"
+  SOUL_DIR="${LIB_ROOT}/hermes-soul"
 fi
 
 # --- Токен ---------------------------------------------------------------------
@@ -182,16 +185,17 @@ clone_or_pull() {
 fix_paths() {
   local dir="$1" target n
   target="${BASE_DIR:-$LIB_ROOT}"
-  n="$(grep -rlE '/root/(hermes-skills-lib|hermes-triz-core|eko-core)' "$dir" --include="*.md" 2>/dev/null | wc -l || true)"
+  n="$(grep -rlE '/root/(hermes-skills-lib|hermes-triz-core|eko-core|hermes-soul)' "$dir" --include="*.md" 2>/dev/null | wc -l || true)"
   if [[ "$n" -gt 0 ]]; then
     # -Z/-0: нуль-терминаторы — пути с пробелами/спецсимволами не разбиваются.
     # || true: pipefail + grep без совпадений = exit 1, что при set -e убило бы
     # скрипт на ПОВТОРНОМ запуске (пути уже переписаны) — баг 17.08.2026.
-    grep -rlZE '/root/(hermes-skills-lib|hermes-triz-core|eko-core)' "$dir" --include="*.md" 2>/dev/null \
+    grep -rlZE '/root/(hermes-skills-lib|hermes-triz-core|eko-core|hermes-soul)' "$dir" --include="*.md" 2>/dev/null \
       | xargs -0 sed -i \
           -e "s|/root/hermes-skills-lib|${target}/hermes-skills-lib|g" \
           -e "s|/root/hermes-triz-core|${target}/hermes-triz-core|g" \
-          -e "s|/root/eko-core|${target}/eko-core|g" || true
+          -e "s|/root/eko-core|${target}/eko-core|g" \
+          -e "s|/root/hermes-soul|${target}/hermes-soul|g" || true
     echo "  hermes-skills: пути оркестраторов переписаны /root/... -> ${target}/... ($n файлов)"
   fi
 }
@@ -437,7 +441,7 @@ mkdir -p "$SKILLS_DIR" "$LIB_DIR" "$TRIZ_DIR" "$EKO_DIR"
 #   2) в ~/.git-credentials нет github.com-строки (для pull приватных репо —
 #      remote чист от токена, креды берутся из credentials).
 NEED_TOKEN="no"
-for d in "$SKILLS_DIR" "$TRIZ_DIR" "$EKO_DIR"; do
+for d in "$SKILLS_DIR" "$TRIZ_DIR" "$EKO_DIR" "$SOUL_DIR"; do
   if [[ ! -d "$d/.git" ]]; then NEED_TOKEN="yes"; fi
 done
 if [[ "$NEED_TOKEN" == "no" ]] && { [[ ! -f "$HOME/.git-credentials" ]] || ! grep -q 'github.com' "$HOME/.git-credentials" 2>/dev/null; }; then
@@ -458,28 +462,31 @@ if [[ "$NEED_TOKEN" == "yes" ]]; then
   fi
 fi
 
-echo "[1/5] hermes-skills -> $SKILLS_DIR"
+echo "[1/7] hermes-skills -> $SKILLS_DIR"
 clone_or_pull "hermes-skills" "$SKILLS_DIR" "yes"
 
-echo "[2/5] hermes-skills-lib -> $LIB_DIR (публичный)"
+echo "[2/7] hermes-skills-lib -> $LIB_DIR (публичный)"
 clone_or_pull "hermes-skills-lib" "$LIB_DIR" "no"
 
-echo "[3/5] hermes-triz-core -> $TRIZ_DIR"
+echo "[3/7] hermes-triz-core -> $TRIZ_DIR"
 clone_or_pull "hermes-triz-core" "$TRIZ_DIR" "yes"
 
-echo "[4/5] eko-core -> $EKO_DIR"
+echo "[4/7] eko-core -> $EKO_DIR"
 clone_or_pull "eko-core" "$EKO_DIR" "yes"
 
-echo "[4b] дедупликация имён скиллов (коллизии блокируют прелоад)"
+echo "[5/7] hermes-soul -> $SOUL_DIR"
+clone_or_pull "hermes-soul" "$SOUL_DIR" "yes"
+
+echo "[6/7] дедупликация имён скиллов (коллизии блокируют прелоад)"
 dedupe_skill_names "$SKILLS_DIR"
 
-echo "[5/5] автозагрузка скиллов (document-critic, ask-first, flash-pro-boost)"
+echo "[7/7] автозагрузка скиллов (document-critic, ask-first, flash-pro-boost)"
 setup_autoload
 
 # --- Отчёт -----------------------------------------------------------------------
 echo
 echo "=== Результат ==="
-for entry in "hermes-skills:$SKILLS_DIR" "hermes-skills-lib:$LIB_DIR" "hermes-triz-core:$TRIZ_DIR" "eko-core:$EKO_DIR"; do
+for entry in "hermes-skills:$SKILLS_DIR" "hermes-skills-lib:$LIB_DIR" "hermes-triz-core:$TRIZ_DIR" "eko-core:$EKO_DIR" "hermes-soul:$SOUL_DIR"; do
   name="${entry%%:*}"
   dir="${entry#*:}"
   hash="$(git -C "$dir" rev-parse --short HEAD 2>/dev/null || echo "N/A")"
