@@ -9,24 +9,26 @@
 #     --base-dir DIR — префикс для путей установки (для тестирования в песочнице).
 #
 # Режимы (автоопределение, переопределяется через HERMES_INSTALL_MODE):
-#   root (id -u == 0):  библиотеки -> /root/hermes-skills-lib, /root/hermes-triz-core, /root/eko-core, /root/hermes-soul
-#   user (иначе):       библиотеки -> $HOME/hermes-skills-lib, $HOME/hermes-triz-core, $HOME/eko-core, $HOME/hermes-soul
+#   root (id -u == 0):  библиотеки -> /root/hermes-skills-lib, /root/hermes-triz-core, /root/eko-core, /root/hermes-soul, /root/sbbp-case
+#   user (иначе):       библиотеки -> $HOME/hermes-skills-lib, $HOME/hermes-triz-core, $HOME/eko-core, $HOME/hermes-soul, $HOME/sbbp-case
 #                       + sed-замена /root/... -> $HOME/... в скиллах (оркестраторы ссылаются
 #                         на библиотеки абсолютными путями; в user-режиме пути переписываются).
 #
-# Устанавливает 5 репозиториев:
+# Устанавливает 6 репозиториев:
 #   hermes-skills       -> ~/.hermes/skills          (активные скиллы, индексируются Hermes)
 #   hermes-skills-lib   -> <lib_root>/hermes-skills-lib   (библиотека, публичный репо)
 #   hermes-triz-core    -> <lib_root>/hermes-triz-core    (ТРИЗ-ядро)
 #   eko-core            -> <lib_root>/eko-core            (ядро компетенций Устинова)
 #   hermes-soul         -> <lib_root>/hermes-soul          (версионирование SOUL.md)
-# 4 из 5 репозиториев приватные — нужен GitHub-токен (env GITHUB_TOKEN,
+#   agent-pair-pilot    -> <lib_root>/sbbp-case            (схема воркеров: роли, контракт,
+#                          two-workers.sh + qwen-task.sh -> <lib_root>/scripts/)
+# 5 из 6 репозиториев приватные — нужен GitHub-токен (env GITHUB_TOKEN,
 # ~/.git-credentials или интерактивный ввод). Сам скрипт секретов не содержит.
 set -euo pipefail
 
 # Версия скрипта (обновляется при значимых правках; выводится в отчёте —
 # если после пуша выполняется старая версия, видно сразу, CDN-кэш).
-SCRIPT_VERSION="2026-08-17+hermes-soul"
+SCRIPT_VERSION="2026-08-17+agent-pair"
 
 GITHUB_USER="AllexandrKnife"
 BASE_DIR=""
@@ -77,12 +79,14 @@ if [[ -n "$BASE_DIR" ]]; then
   TRIZ_DIR="${BASE_DIR}/hermes-triz-core"
   EKO_DIR="${BASE_DIR}/eko-core"
   SOUL_DIR="${BASE_DIR}/hermes-soul"
+  PAIR_DIR="${BASE_DIR}/sbbp-case"
 else
   SKILLS_DIR="$HOME/.hermes/skills"
   LIB_DIR="${LIB_ROOT}/hermes-skills-lib"
   TRIZ_DIR="${LIB_ROOT}/hermes-triz-core"
   EKO_DIR="${LIB_ROOT}/eko-core"
   SOUL_DIR="${LIB_ROOT}/hermes-soul"
+  PAIR_DIR="${LIB_ROOT}/sbbp-case"
 fi
 
 # --- Токен ---------------------------------------------------------------------
@@ -176,6 +180,34 @@ clone_or_pull() {
   # канонический https://github.com/<user>/<repo>.git. Креды берутся из
   # ~/.git-credentials (credential.helper store). Идемпотентно.
   git -C "$dir" remote set-url origin "https://github.com/${GITHUB_USER}/${repo}.git"
+}
+
+# --- Установка скриптов схемы воркеров (agent-pair-pilot) ----------------------
+# Копирует two-workers.sh и qwen-task.sh из репо в <scripts_dir>.
+# В user-режиме дефолтные пути /root/... в скриптах переписываются на
+# ${BASE_DIR:-$LIB_ROOT}/... (скрипты параметризованы env, но дефолты заточены
+# под root-машину).
+install_pair_scripts() {
+  local src_dir="$1" scripts_src dst_dir prefix
+  dst_dir="${BASE_DIR:-$LIB_ROOT}/scripts"
+  prefix="${BASE_DIR:-$LIB_ROOT}"
+  scripts_src="$src_dir/scripts"
+  if [[ ! -f "$scripts_src/two-workers.sh" ]] || [[ ! -f "$scripts_src/qwen-task.sh" ]]; then
+    echo "  agent-pair-pilot: ВНИМАНИЕ — scripts/two-workers.sh или scripts/qwen-task.sh не найдены в репо" >&2
+    return 0
+  fi
+  mkdir -p "$dst_dir"
+  cp -a "$scripts_src/two-workers.sh" "$scripts_src/qwen-task.sh" "$dst_dir/"
+  if [[ "$MODE" == "user" ]]; then
+    sed -i \
+      -e "s|/root/sbbp-case|${prefix}/sbbp-case|g" \
+      -e "s|/root/scripts|${prefix}/scripts|g" \
+      "$dst_dir/two-workers.sh" "$dst_dir/qwen-task.sh" 2>/dev/null || true
+    echo "  agent-pair-pilot: скрипты установлены в $dst_dir (пути переписаны /root/... -> ${prefix}/...)"
+  else
+    echo "  agent-pair-pilot: скрипты установлены в $dst_dir"
+  fi
+  chmod +x "$dst_dir/two-workers.sh" "$dst_dir/qwen-task.sh"
 }
 
 # --- Переписывание путей оркестраторов (только user-режим) ----------------------
@@ -434,14 +466,14 @@ for _cmd in git curl python3; do
 done
 
 echo "Установка скиллов Hermes (пользователь GitHub: ${GITHUB_USER}, режим: ${MODE}, скрипт v${SCRIPT_VERSION})"
-mkdir -p "$SKILLS_DIR" "$LIB_DIR" "$TRIZ_DIR" "$EKO_DIR"
+mkdir -p "$SKILLS_DIR" "$LIB_DIR" "$TRIZ_DIR" "$EKO_DIR" "$PAIR_DIR"
 
 # Токен нужен, если:
 #   1) хотя бы одно приватное репо ещё не установлено (для clone), ИЛИ
 #   2) в ~/.git-credentials нет github.com-строки (для pull приватных репо —
 #      remote чист от токена, креды берутся из credentials).
 NEED_TOKEN="no"
-for d in "$SKILLS_DIR" "$TRIZ_DIR" "$EKO_DIR" "$SOUL_DIR"; do
+for d in "$SKILLS_DIR" "$TRIZ_DIR" "$EKO_DIR" "$SOUL_DIR" "$PAIR_DIR"; do
   if [[ ! -d "$d/.git" ]]; then NEED_TOKEN="yes"; fi
 done
 if [[ "$NEED_TOKEN" == "no" ]] && { [[ ! -f "$HOME/.git-credentials" ]] || ! grep -q 'github.com' "$HOME/.git-credentials" 2>/dev/null; }; then
@@ -462,36 +494,43 @@ if [[ "$NEED_TOKEN" == "yes" ]]; then
   fi
 fi
 
-echo "[1/7] hermes-skills -> $SKILLS_DIR"
+echo "[1/8] hermes-skills -> $SKILLS_DIR"
 clone_or_pull "hermes-skills" "$SKILLS_DIR" "yes"
 
-echo "[2/7] hermes-skills-lib -> $LIB_DIR (публичный)"
+echo "[2/8] hermes-skills-lib -> $LIB_DIR (публичный)"
 clone_or_pull "hermes-skills-lib" "$LIB_DIR" "no"
 
-echo "[3/7] hermes-triz-core -> $TRIZ_DIR"
+echo "[3/8] hermes-triz-core -> $TRIZ_DIR"
 clone_or_pull "hermes-triz-core" "$TRIZ_DIR" "yes"
 
-echo "[4/7] eko-core -> $EKO_DIR"
+echo "[4/8] eko-core -> $EKO_DIR"
 clone_or_pull "eko-core" "$EKO_DIR" "yes"
 
-echo "[5/7] hermes-soul -> $SOUL_DIR"
+echo "[5/8] hermes-soul -> $SOUL_DIR"
 clone_or_pull "hermes-soul" "$SOUL_DIR" "yes"
 
-echo "[6/7] дедупликация имён скиллов (коллизии блокируют прелоад)"
+echo "[6/8] agent-pair-pilot -> $PAIR_DIR (схема воркеров)"
+clone_or_pull "agent-pair-pilot" "$PAIR_DIR" "yes"
+install_pair_scripts "$PAIR_DIR"
+
+echo "[7/8] дедупликация имён скиллов (коллизии блокируют прелоад)"
 dedupe_skill_names "$SKILLS_DIR"
 
-echo "[7/7] автозагрузка скиллов (document-critic, ask-first, flash-pro-boost)"
+echo "[8/8] автозагрузка скиллов (document-critic, ask-first, flash-pro-boost)"
 setup_autoload
 
 # --- Отчёт -----------------------------------------------------------------------
 echo
 echo "=== Результат ==="
-for entry in "hermes-skills:$SKILLS_DIR" "hermes-skills-lib:$LIB_DIR" "hermes-triz-core:$TRIZ_DIR" "eko-core:$EKO_DIR" "hermes-soul:$SOUL_DIR"; do
+for entry in "hermes-skills:$SKILLS_DIR" "hermes-skills-lib:$LIB_DIR" "hermes-triz-core:$TRIZ_DIR" "eko-core:$EKO_DIR" "hermes-soul:$SOUL_DIR" "agent-pair-pilot:$PAIR_DIR"; do
   name="${entry%%:*}"
   dir="${entry#*:}"
   hash="$(git -C "$dir" rev-parse --short HEAD 2>/dev/null || echo "N/A")"
   printf "  %-18s %s  %s\n" "$name" "$hash" "$dir"
 done
+if [[ -d "${BASE_DIR:-$LIB_ROOT}/scripts" ]]; then
+  echo "  scripts:          two-workers.sh + qwen-task.sh -> ${BASE_DIR:-$LIB_ROOT}/scripts/"
+fi
 echo "  скрипт: v${SCRIPT_VERSION} (если не последняя — CDN-кэш, повторите запуск)"
 echo
 echo "Готово. Перезапустите Hermes (новая сессия), чтобы скиллы подхватились.
