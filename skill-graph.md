@@ -54,4 +54,17 @@
 | simplify-code | software-development | ~/hermes-skills-lib/skills/software-development/simplify-code | Use when Parallel 4-agent cleanup of recent code |
 | spike | software-development | ~/hermes-skills-lib/skills/software-development/spike | Use when Throwaway experiments to validate an idea |
 
-Всего вынесено: 43 скиллов. Лог переноса: /root/idea-gen/skill-graph-move-log.txt
+| open-source-project-evaluation | research | ~/hermes-skills-lib/skills/research/open-source-project-evaluation | Use when Structured evaluation of open-source projects |
+| baoyu-article-illustrator | creative | ~/hermes-skills-lib/skills/creative/baoyu-article-illustrator | Use when Article illustrations: type × style × palette |
+| minecraft-modpack-server | gaming | ~/hermes-skills-lib/skills/gaming/minecraft-modpack-server | Use when Host modded Minecraft servers (CurseForge, |
+| blocked-page-recovery | research | ~/hermes-skills-lib/skills/research/blocked-page-recovery | Use when Recover blocked/paywalled/WAF'd pages via |
+| segment-anything | mlops | ~/hermes-skills-lib/skills/mlops/models/segment-anything | Use when SAM: zero-shot image segmentation via points, |
+| exa-search | ecc | ~/hermes-skills-lib/skills/ecc/exa-search | Neural search via Exa MCP for web, code, and company research. Use when the user needs web search, code examples, company intel, people lookup, or AI-powered deep research with Exa's neural search engine. |
+| trl-fine-tuning | mlops | ~/hermes-skills-lib/skills/mlops/training/trl-fine-tuning | Use when TRL: SFT, DPO, PPO, GRPO, reward modeling for |
+| jupyter-live-kernel | data-science | ~/hermes-skills-lib/skills/data-science/jupyter-live-kernel | Use when Iterative Python via live Jupyter kernel |
+| data-scraper-agent | ecc | ~/hermes-skills-lib/skills/ecc/data-scraper-agent | Use when Build a fully automated AI-powered data |
+| baoyu-comic | creative | ~/hermes-skills-lib/skills/creative/baoyu-comic | Use when Knowledge comics (知识漫画): educational, |
+| e-commerce-pricing | research | ~/hermes-skills-lib/skills/research/e-commerce-pricing | Use when Research product prices across Russian |
+| pokemon-player | gaming | ~/hermes-skills-lib/skills/gaming/pokemon-player | Use when Play Pokemon via headless emulator + RAM |
+| creative-ideation | creative | ~/hermes-skills-lib/skills/creative/creative-ideation | Use when Generate project ideas via creative |
+Всего вынесено: 56 скиллов. Лог переноса: /root/idea-gen/skill-graph-move-log.txt
