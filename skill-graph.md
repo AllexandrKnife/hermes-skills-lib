@@ -67,4 +67,64 @@
 | e-commerce-pricing | research | ~/hermes-skills-lib/skills/research/e-commerce-pricing | Use when Research product prices across Russian |
 | pokemon-player | gaming | ~/hermes-skills-lib/skills/gaming/pokemon-player | Use when Play Pokemon via headless emulator + RAM |
 | creative-ideation | creative | ~/hermes-skills-lib/skills/creative/creative-ideation | Use when Generate project ideas via creative |
-Всего вынесено: 56 скиллов. Лог переноса: /root/idea-gen/skill-graph-move-log.txt
+
+| academic-article-writing | academic | ~/hermes-skills-lib/skills/academic/academic-article-writing | Use when написание научной статьи (ВАК) с реальными данными |
+| academic-profiling | academic | ~/hermes-skills-lib/skills/academic/academic-profiling | Use when Profile academic researchers and their |
+| academic-publications | academic | ~/hermes-skills-lib/skills/academic/academic-publications | Use when сбор публикаций учёного, скачивание, профиль автора |
+| adguard-vpn-dns | network | ~/hermes-skills-lib/skills/network/adguard-vpn-dns | Use when установка AdGuardHome на VPS, интеграция с sing-box/Amnezia VPN, DNS-оптимизация через unbound + upstreams |
+| amnezia-vpn | network | ~/hermes-skills-lib/skills/network/amnezia-vpn | Use when Deploy, manage, and troubleshoot Amnezia VPN servers — container architecture, user management, error... |
+| amneziawg-v1-server | network | ~/hermes-skills-lib/skills/network/amneziawg-v1-server | Use when WG блокируется DPI — AWG v1.0 сервер + Keenetic. |
+| amneziawg-vpn | network | ~/hermes-skills-lib/skills/network/amneziawg-vpn | Use when WireGuard is DPI-blocked or deploying AmneziaWG. |
+| cascade-exclusion | construction | ~/hermes-skills-lib/skills/construction/cascade-exclusion | Use when Каскадное исключение работ в строительных |
+| construction-estimate-audit | construction | ~/hermes-skills-lib/skills/construction/construction-estimate-audit | Use when Audit construction estimates for overpricing |
+| construction-estimate-fraud | construction | ~/hermes-skills-lib/skills/construction/construction-estimate-fraud | Use when Анализ строительных смет на предмет завышения |
+| construction-estimate-fraud-analysis | construction | ~/hermes-skills-lib/skills/construction/construction-estimate-fraud-analysis | Use when Анализ строительных смет на предмет |
+| debugging-hermes-tui-commands | hermes | ~/hermes-skills-lib/skills/hermes/debugging-hermes-tui-commands | Use when Debug Hermes TUI slash commands: Python, |
+| dns-infrastructure-audit | network | ~/hermes-skills-lib/skills/network/dns-infrastructure-audit | Use when Audit and provision DNS infrastructure on |
+| github-credential-management | github | ~/hermes-skills-lib/skills/github/github-credential-management | Use when storing/auditing GitHub PAT credentials. |
+| github-interaction | github | ~/hermes-skills-lib/skills/github/github-interaction | Use when Complete GitHub interaction — authentication |
+| github-issue-to-pr | github | ~/hermes-skills-lib/skills/github/github-issue-to-pr | Use when Carry a GitHub issue to a verified PR with |
+| github-release-install | github | ~/hermes-skills-lib/skills/github/github-release-install | Use when GitHub release CLI install: SHA256 verify, |
+| github-repo-publish | github | ~/hermes-skills-lib/skills/github/github-repo-publish | Use when пуш локального артефакта/репо в GitHub без gh CLI |
+| hermes-agent-skill-authoring | hermes | ~/hermes-skills-lib/skills/hermes/hermes-agent-skill-authoring | Use when Author in-repo SKILL.md files: frontmatter |
+| hermes-auxiliary-tasks | hermes | ~/hermes-skills-lib/skills/hermes/hermes-auxiliary-tasks | Use when Hermes auxiliary tasks fail: HTTP 400, json_schema. |
+| hermes-external-toolkit-integration | hermes | ~/hermes-skills-lib/skills/hermes/hermes-external-toolkit-integration | Use when Evaluate, import, and adapt external agent |
+| hermes-maintenance | hermes | ~/hermes-skills-lib/skills/hermes/hermes-maintenance | Use when Hermes сломан после обновления — патчи установки. |
+| hermes-memory-audit | hermes | ~/hermes-skills-lib/skills/hermes/hermes-memory-audit | Use when Аудит памяти Hermes по 8 уровням: модель, |
+| hermes-plugin-development | hermes | ~/hermes-skills-lib/skills/hermes/hermes-plugin-development | Use when Create Hermes Agent plugins with hooks (pre_tool_call, etc.) to intercept and modify tool calls. Cover... |
+| hermes-provider-troubleshooting | hermes | ~/hermes-skills-lib/skills/hermes/hermes-provider-troubleshooting | Use when Hermes auxiliary tasks fail with provider errors. |
+| hermes-s6-container-supervision | hermes | ~/hermes-skills-lib/skills/hermes/hermes-s6-container-supervision | Use when Modify, debug, or extend the s6-overlay |
+| hermes-skill-autoload | hermes | ~/hermes-skills-lib/skills/hermes/hermes-skill-autoload | Use when Проверка и настройка авто-загрузки скиллов |
+| hermes-skill-inventory | hermes | ~/hermes-skills-lib/skills/hermes/hermes-skill-inventory | Use when Инвентаризация скилов Hermes: кастомные vs |
+| hermes-skill-migration | hermes | ~/hermes-skills-lib/skills/hermes/hermes-skill-migration | Use when перенос скиллов Hermes на другую машину. |
+| inspecting-hermes-desktop-dom | hermes | ~/hermes-skills-lib/skills/hermes/inspecting-hermes-desktop-dom | Use when Read the live Hermes desktop DOM/CSS over CDP |
+| keenetic-router | network | ~/hermes-skills-lib/skills/network/keenetic-router | Use when Manage Keenetic NDMS routers (KN-1210 / 4G) via RCI API — challenge-response auth, configuration queri... |
+| keenetic-router-admin | network | ~/hermes-skills-lib/skills/network/keenetic-router-admin | Use when configuring a Keenetic router (KeeneticOS). |
+| linux-vps-maintenance | network | ~/hermes-skills-lib/skills/network/linux-vps-maintenance | Use when VPS SSH: apt update/upgrade, чистка ядер. |
+| merge-reconciler | github | ~/hermes-skills-lib/skills/github/merge-reconciler | Use when Neutral third-party resolution of agent merge |
+| openclaw-hermes-migration | hermes | ~/hermes-skills-lib/skills/hermes/openclaw-hermes-migration | Use when миграция OpenClaw→Hermes на VPS, тот же бот. |
+| openwrt-singbox-gateway | network | ~/hermes-skills-lib/skills/network/openwrt-singbox-gateway | Use when OpenWrt-гейтвей: sing-box VLESS/Reality, |
+| openwrt-singbox-home-gateway | network | ~/hermes-skills-lib/skills/network/openwrt-singbox-home-gateway | Use when Cudy WR3000S: сток (WG Client) ИЛИ OpenWrt + |
+| openwrt-vpn-gateway | network | ~/hermes-skills-lib/skills/network/openwrt-vpn-gateway | Use when OpenWrt-роутер как VPN-гейтвей: выбор, |
+| osint-investigation | osint | ~/hermes-skills-lib/skills/osint/osint-investigation | Use when Follow the money via public records and |
+| osint-research | osint | ~/hermes-skills-lib/skills/osint/osint-research | Use when OSINT / аналитические исследования — сбор данных из открытых источников (русскоязычные + англоязычные)... |
+| russia-ukraine-osint | osint | ~/hermes-skills-lib/skills/osint/russia-ukraine-osint | Use when Multi-source balanced OSINT on Russia-Ukraine |
+| russian-company-osint | osint | ~/hermes-skills-lib/skills/osint/russian-company-osint | Use when OSINT investigation of Russian legal entities |
+| russian-construction-audit | construction | ~/hermes-skills-lib/skills/construction/russian-construction-audit | Use when Analyse Russian construction estimates for |
+| russian-osint-data-collection | osint | ~/hermes-skills-lib/skills/osint/russian-osint-data-collection | Use when Bypass bot protection on Russian web sources |
+| sherlock | osint | ~/hermes-skills-lib/skills/osint/sherlock | Use when Find accounts for a username across 400+ |
+| sing-box-server-setup | network | ~/hermes-skills-lib/skills/network/sing-box-server-setup | Use when Поставить/обновить sing-box на VPS (sb.sh |
+| tcp-2621 | construction | ~/hermes-skills-lib/skills/construction/tcp-2621 | Use when ТЦП 2621 18.1 — типовые ценовые показатели |
+| tcp-vedomost-audit | construction | ~/hermes-skills-lib/skills/construction/tcp-vedomost-audit | Use when Проверка ведомостей ВИР/ВВР по ТЦП на двойную |
+| vpn-adguard-dns-optimization | network | ~/hermes-skills-lib/skills/network/vpn-adguard-dns-optimization | Use when настройка связки VPN + AdGuardHome с unbound, parallel upstreams, агрессивными фильтрами на VPS |
+| vpn-egress-tunnel | network | ~/hermes-skills-lib/skills/network/vpn-egress-tunnel | Use when Туннель WSL→VPS: обход CF-блокировок, |
+| vps-adguard-dns-integration | network | ~/hermes-skills-lib/skills/network/vps-adguard-dns-integration | Use when Deploy AdGuardHome and integrate it as the |
+| vps-file-transfer | network | ~/hermes-skills-lib/skills/network/vps-file-transfer | Use when copying files between WSL and VPS over SSH. |
+| vps-vpn-provisioning | network | ~/hermes-skills-lib/skills/network/vps-vpn-provisioning | Use when provisioning VPN/proxy services on user's VPS. |
+| windows-admin-tasks-from-wsl | network | ~/hermes-skills-lib/skills/network/windows-admin-tasks-from-wsl | Use when powershell.exe fails or admin Windows ops from WSL. |
+| wsl-cross-distro-transfer | network | ~/hermes-skills-lib/skills/network/wsl-cross-distro-transfer | Use when передача данных между WSL-образами на одной машине. |
+| wsl-distro-diagnostics | network | ~/hermes-skills-lib/skills/network/wsl-distro-diagnostics | Use when диагностика соседнего WSL-образа: сеть, процессы. |
+| wsl-maintenance | network | ~/hermes-skills-lib/skills/network/wsl-maintenance | Use when Diagnose, tune, and clean WSL2 environments — disk space, .wslconfig, cache cleanup, Windows interop p... |
+| wsl-vpn-on-demand | network | ~/hermes-skills-lib/skills/network/wsl-vpn-on-demand | Use when WSL VPN egress on demand: sing-box client, |
+| wsl-windows-interop | network | ~/hermes-skills-lib/skills/network/wsl-windows-interop | Use when Query Windows host state, manage WSL |
+Всего вынесено: 115 скиллов (56 декларированных ранее + 63 легаси-коллекция, внесены 01.09.2026). Лог переноса: /root/idea-gen/skill-graph-move-log.txt
