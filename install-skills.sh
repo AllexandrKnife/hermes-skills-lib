@@ -28,7 +28,7 @@ set -euo pipefail
 
 # Версия скрипта (обновляется при значимых правках; выводится в отчёте —
 # если после пуша выполняется старая версия, видно сразу, CDN-кэш).
-SCRIPT_VERSION="2026-08-17+agent-pair"
+SCRIPT_VERSION="2026-09-01"
 
 GITHUB_USER="AllexandrKnife"
 BASE_DIR=""
