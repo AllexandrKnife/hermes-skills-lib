@@ -18,12 +18,15 @@ Hermes), osint/ (разведка), github/, academic/, construction/ (смет�
 curl -fsSL https://raw.githubusercontent.com/AllexandrKnife/hermes-skills-lib/main/install-skills.sh | bash
 ```
 
-Скрипт клонирует/обновляет 5 репозиториев:
+Скрипт клонирует/обновляет 8 репозиториев:
 - hermes-skills → ~/.hermes/skills (активные скиллы)
-- hermes-skills-lib → /root/hermes-skills-lib
-- hermes-triz-core → /root/hermes-triz-core
-- eko-core → /root/eko-core
+- hermes-skills-lib → /root/hermes-skills-lib (библиотека, публичный)
+- hermes-triz-core → /root/hermes-triz-core (ТРИЗ-ядро)
+- eko-core → /root/eko-core (ядро компетенций Устинова)
 - hermes-soul → /root/hermes-soul (версионирование SOUL.md)
+- agent-pair-pilot → /root/sbbp-case (схема воркеров: роли, контракт, two-workers.sh/qwen-task.sh → /root/scripts/)
+- hermes-plans-dev → /root/plans (план-блокнот: behavioral-evals + черновики)
+- eco-catalog → /root/eco-catalog (каталог экономических классов: реактив./превент. ядро, мета-слой, shadow_cash)
 
 Токен берётся из env GITHUB_TOKEN, ~/.git-credentials или интерактивного ввода.
 Идемпотентен: повторный запуск делает git pull. --base-dir — для песочницы.

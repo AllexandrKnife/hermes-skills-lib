@@ -9,12 +9,12 @@
 #     --base-dir DIR — префикс для путей установки (для тестирования в песочнице).
 #
 # Режимы (автоопределение, переопределяется через HERMES_INSTALL_MODE):
-#   root (id -u == 0):  библиотеки -> /root/hermes-skills-lib, /root/hermes-triz-core, /root/eko-core, /root/hermes-soul, /root/sbbp-case, /root/plans
-#   user (иначе):       библиотеки -> $HOME/hermes-skills-lib, $HOME/hermes-triz-core, $HOME/eko-core, $HOME/hermes-soul, $HOME/sbbp-case, $HOME/plans
+#   root (id -u == 0):  библиотеки -> /root/hermes-skills-lib, /root/hermes-triz-core, /root/eko-core, /root/hermes-soul, /root/sbbp-case, /root/plans, /root/eco-catalog
+#   user (иначе):       библиотеки -> $HOME/hermes-skills-lib, $HOME/hermes-triz-core, $HOME/eko-core, $HOME/hermes-soul, $HOME/sbbp-case, $HOME/plans, $HOME/eco-catalog
 #                       + sed-замена /root/... -> $HOME/... в скиллах (оркестраторы ссылаются
 #                         на библиотеки абсолютными путями; в user-режиме пути переписываются).
 #
-# Устанавливает 7 репозиториев:
+# Устанавливает 8 репозиториев:
 #   hermes-skills       -> ~/.hermes/skills          (активные скиллы, индексируются Hermes)
 #   hermes-skills-lib   -> <lib_root>/hermes-skills-lib   (библиотека, публичный репо)
 #   hermes-triz-core    -> <lib_root>/hermes-triz-core    (ТРИЗ-ядро)
@@ -23,13 +23,15 @@
 #   agent-pair-pilot    -> <lib_root>/sbbp-case            (схема воркеров: роли, контракт,
 #                          two-workers.sh + qwen-task.sh -> <lib_root>/scripts/)
 #   hermes-plans-dev    -> <lib_root>/plans                (план-блокнот, behavioral-evals + черновики)
-# 6 из 7 репозиториев приватные — нужен GitHub-токен (env GITHUB_TOKEN,
+#   eco-catalog         -> <lib_root>/eco-catalog          (каталог экономических классов: метод «Альтшуллер
+#                          для бизнеса», реактив./превент. ядро, мета-слой ловушек, shadow_cash)
+# 7 из 8 репозиториев приватные — нужен GitHub-токен (env GITHUB_TOKEN,
 # ~/.git-credentials или интерактивный ввод). Сам скрипт секретов не содержит.
 set -euo pipefail
 
 # Версия скрипта (обновляется при значимых правках; выводится в отчёте —
 # если после пуша выполняется старая версия, видно сразу, CDN-кэш).
-SCRIPT_VERSION="2026-09-03"
+SCRIPT_VERSION="2026-09-07+eco-catalog"
 
 GITHUB_USER="AllexandrKnife"
 BASE_DIR=""
@@ -82,6 +84,7 @@ if [[ -n "$BASE_DIR" ]]; then
   SOUL_DIR="${BASE_DIR}/hermes-soul"
   PAIR_DIR="${BASE_DIR}/sbbp-case"
   PLANS_DIR="${BASE_DIR}/plans"
+  CAT_DIR="${BASE_DIR}/eco-catalog"
 else
   SKILLS_DIR="$HOME/.hermes/skills"
   LIB_DIR="${LIB_ROOT}/hermes-skills-lib"
@@ -90,6 +93,7 @@ else
   SOUL_DIR="${LIB_ROOT}/hermes-soul"
   PAIR_DIR="${LIB_ROOT}/sbbp-case"
   PLANS_DIR="${LIB_ROOT}/plans"
+  CAT_DIR="${LIB_ROOT}/eco-catalog"
 fi
 
 # --- Токен ---------------------------------------------------------------------
@@ -508,14 +512,14 @@ for _cmd in git curl python3; do
 done
 
 echo "Установка скиллов Hermes (пользователь GitHub: ${GITHUB_USER}, режим: ${MODE}, скрипт v${SCRIPT_VERSION})"
-mkdir -p "$SKILLS_DIR" "$LIB_DIR" "$TRIZ_DIR" "$EKO_DIR" "$PAIR_DIR" "$PLANS_DIR"
+mkdir -p "$SKILLS_DIR" "$LIB_DIR" "$TRIZ_DIR" "$EKO_DIR" "$SOUL_DIR" "$PAIR_DIR" "$PLANS_DIR" "$CAT_DIR"
 
 # Токен нужен, если:
 #   1) хотя бы одно приватное репо ещё не установлено (для clone), ИЛИ
 #   2) в ~/.git-credentials нет github.com-строки (для pull приватных репо —
 #      remote чист от токена, креды берутся из credentials).
 NEED_TOKEN="no"
-for d in "$SKILLS_DIR" "$TRIZ_DIR" "$EKO_DIR" "$SOUL_DIR" "$PAIR_DIR" "$PLANS_DIR"; do
+for d in "$SKILLS_DIR" "$TRIZ_DIR" "$EKO_DIR" "$SOUL_DIR" "$PAIR_DIR" "$PLANS_DIR" "$CAT_DIR"; do
   if [[ ! -d "$d/.git" ]]; then NEED_TOKEN="yes"; fi
 done
 if [[ "$NEED_TOKEN" == "no" ]] && { [[ ! -f "$HOME/.git-credentials" ]] || ! grep -q 'github.com' "$HOME/.git-credentials" 2>/dev/null; }; then
@@ -536,32 +540,35 @@ if [[ "$NEED_TOKEN" == "yes" ]]; then
   fi
 fi
 
-echo "[1/9] hermes-skills -> $SKILLS_DIR"
+echo "[1/10] hermes-skills -> $SKILLS_DIR"
 clone_or_pull "hermes-skills" "$SKILLS_DIR" "yes"
 
-echo "[2/9] hermes-skills-lib -> $LIB_DIR (публичный)"
+echo "[2/10] hermes-skills-lib -> $LIB_DIR (публичный)"
 clone_or_pull "hermes-skills-lib" "$LIB_DIR" "no"
 
-echo "[3/9] hermes-triz-core -> $TRIZ_DIR"
+echo "[3/10] hermes-triz-core -> $TRIZ_DIR"
 clone_or_pull "hermes-triz-core" "$TRIZ_DIR" "yes"
 
-echo "[4/9] eko-core -> $EKO_DIR"
+echo "[4/10] eko-core -> $EKO_DIR"
 clone_or_pull "eko-core" "$EKO_DIR" "yes"
 
-echo "[5/9] hermes-soul -> $SOUL_DIR"
+echo "[5/10] hermes-soul -> $SOUL_DIR"
 clone_or_pull "hermes-soul" "$SOUL_DIR" "yes"
 
-echo "[6/9] agent-pair-pilot -> $PAIR_DIR (схема воркеров)"
+echo "[6/10] agent-pair-pilot -> $PAIR_DIR (схема воркеров)"
 clone_or_pull "agent-pair-pilot" "$PAIR_DIR" "yes"
 install_pair_scripts "$PAIR_DIR"
 
-echo "[7/9] hermes-plans-dev -> $PLANS_DIR (план-блокнот: behavioral-evals + черновики)"
+echo "[7/10] hermes-plans-dev -> $PLANS_DIR (план-блокнот: behavioral-evals + черновики)"
 clone_or_pull "hermes-plans-dev" "$PLANS_DIR" "yes"
 
-echo "[8/9] дедупликация имён скиллов (коллизии блокируют прелоад)"
+echo "[8/10] eco-catalog -> $CAT_DIR (каталог экономических классов)"
+clone_or_pull "eco-catalog" "$CAT_DIR" "yes"
+
+echo "[9/10] дедупликация имён скиллов (коллизии блокируют прелоад)"
 dedupe_skill_names "$SKILLS_DIR"
 
-echo "[9/9] автозагрузка скиллов (document-critic, ask-first, flash-pro-boost)"
+echo "[10/10] автозагрузка скиллов (document-critic, ask-first, flash-pro-boost)"
 setup_autoload
 
 # Починка симлинка reviewer.py — после установки hermes-skills (слой 9 document-critic)
@@ -570,7 +577,7 @@ fix_reviewer_symlink
 # --- Отчёт -----------------------------------------------------------------------
 echo
 echo "=== Результат ==="
-for entry in "hermes-skills:$SKILLS_DIR" "hermes-skills-lib:$LIB_DIR" "hermes-triz-core:$TRIZ_DIR" "eko-core:$EKO_DIR" "hermes-soul:$SOUL_DIR" "agent-pair-pilot:$PAIR_DIR" "hermes-plans-dev:$PLANS_DIR"; do
+for entry in "hermes-skills:$SKILLS_DIR" "hermes-skills-lib:$LIB_DIR" "hermes-triz-core:$TRIZ_DIR" "eko-core:$EKO_DIR" "hermes-soul:$SOUL_DIR" "agent-pair-pilot:$PAIR_DIR" "hermes-plans-dev:$PLANS_DIR" "eco-catalog:$CAT_DIR"; do
   name="${entry%%:*}"
   dir="${entry#*:}"
   hash="$(git -C "$dir" rev-parse --short HEAD 2>/dev/null || echo "N/A")"
