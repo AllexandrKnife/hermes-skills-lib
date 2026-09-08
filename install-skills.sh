@@ -23,15 +23,16 @@
 #   agent-pair-pilot    -> <lib_root>/sbbp-case            (схема воркеров: роли, контракт,
 #                          two-workers.sh + qwen-task.sh -> <lib_root>/scripts/)
 #   hermes-plans-dev    -> <lib_root>/plans                (план-блокнот, behavioral-evals + черновики)
-#   eco-catalog         -> <lib_root>/eco-catalog          (каталог экономических классов: метод «Альтшуллер
-#                          для бизнеса», реактив./превент. ядро, мета-слой ловушек, shadow_cash)
+#   eco-catalog         -> <lib_root>/eco-catalog          (каталог-семейство «Альтшуллер для бизнеса»:
+#                          8 доменов: экономика/OSINT/закупки/фрод/диверсия/право/маркетинг/ИБ;
+#                          реактив./превент. ядро, мета-слой ловушек, shadow_cash)
 # 7 из 8 репозиториев приватные — нужен GitHub-токен (env GITHUB_TOKEN,
 # ~/.git-credentials или интерактивный ввод). Сам скрипт секретов не содержит.
 set -euo pipefail
 
 # Версия скрипта (обновляется при значимых правках; выводится в отчёте —
 # если после пуша выполняется старая версия, видно сразу, CDN-кэш).
-SCRIPT_VERSION="2026-09-07+eco-catalog"
+SCRIPT_VERSION="2026-09-08+eco8dom"
 
 GITHUB_USER="AllexandrKnife"
 BASE_DIR=""
