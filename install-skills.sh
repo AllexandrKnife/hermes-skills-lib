@@ -24,15 +24,17 @@
 #                          two-workers.sh + qwen-task.sh -> <lib_root>/scripts/)
 #   hermes-plans-dev    -> <lib_root>/plans                (план-блокнот, behavioral-evals + черновики)
 #   eco-catalog         -> <lib_root>/eco-catalog          (каталог-семейство «Альтшуллер для бизнеса»:
-#                          8 доменов: экономика/OSINT/закупки/фрод/диверсия/право/маркетинг/ИБ;
-#                          реактив./превент. ядро, мета-слой ловушек, shadow_cash)
+#                          10 доменов: бизнес-эконом/OSINT/закупки/фрод/диверсия/право/маркетинг/ИБ +
+#                          русский язык (правка) / рерайт (текст под цель);
+#                          реактив./превент. ядро, мета-слой ловушек, shadow_cash,
+#                          роутеры: router_catalogs7.py (бизнес-домены), router_texts.py (правка/рерайт))
 # 7 из 8 репозиториев приватные — нужен GitHub-токен (env GITHUB_TOKEN,
 # ~/.git-credentials или интерактивный ввод). Сам скрипт секретов не содержит.
 set -euo pipefail
 
 # Версия скрипта (обновляется при значимых правках; выводится в отчёте —
 # если после пуша выполняется старая версия, видно сразу, CDN-кэш).
-SCRIPT_VERSION="2026-09-08+eco8dom"
+SCRIPT_VERSION="2026-09-09+eco10textrouter"
 
 GITHUB_USER="AllexandrKnife"
 BASE_DIR=""
@@ -563,7 +565,7 @@ install_pair_scripts "$PAIR_DIR"
 echo "[7/10] hermes-plans-dev -> $PLANS_DIR (план-блокнот: behavioral-evals + черновики)"
 clone_or_pull "hermes-plans-dev" "$PLANS_DIR" "yes"
 
-echo "[8/10] eco-catalog -> $CAT_DIR (каталог экономических классов)"
+echo "[8/10] eco-catalog -> $CAT_DIR (домены «Альтшуллер для бизнеса»: 8 бизнес-доменов + правка рус. языка + рерайт)"
 clone_or_pull "eco-catalog" "$CAT_DIR" "yes"
 
 echo "[9/10] дедупликация имён скиллов (коллизии блокируют прелоад)"
