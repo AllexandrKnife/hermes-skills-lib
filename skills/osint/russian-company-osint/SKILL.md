@@ -17,6 +17,35 @@ Contractor due diligence and OSINT investigation of Russian legal entities.
 - Investigate a company mentioned in construction estimates, procurement docs, or invoices
 - Cross-reference company data against official registries
 
+## Быстрый автоматизированный профиль (движок osint_domain) — СНАЧАЛА
+
+Есть готовый код-движок, который за ОДИН вызов собирает полный профиль из 6
+источников (включая платные блоки долгов/судов ОЮ/проверок, которых нет в
+ручных шагах ниже). При запросе «пробить ИНН/профиль контрагента» — СНАЧАЛА
+запустить движок, затем ручными шагами дополнять точечно при необходимости.
+
+```bash
+cd /root/Отчёты/тг_бот_osint
+export PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
+python3 counterparty_report.py <ИНН>     # полный профиль (все источники)
+# или только платные/точечные блоки rusprofile:
+/usr/bin/python3 osint_domain/osint_adapters/rusprofile_adapter.py <ИНН>
+```
+
+Что даёт движок (проверено 09.09.2026 на ИНН 1657050680):
+- ГИР БО: реквизиты + 5 лет финансов (выручка в млн, динамика)
+- checko: риски (массовость/санкции), руководители/учредители, ЕФРСБ-банкротство
+- граф: связи бенефициаров (кластеры компаний, «кто контролирует»)
+- fin-движок: тренды, аномалии, человекочитаемый вердикт
+- kad.arbitr через sudact + rusprofile-исходы: арбитражные дела
+- rusprofile (подписка): ИСПОЛНИТЕЛЬНЫЕ ПРОИЗВОДСТВА (долги), суды общей
+  юрисдикции, проверки ЕРП — закрывает блоки, недоступные ручными шагами
+
+Код: /root/Отчёты/тг_бот_osint/ (osint_domain/, counterparty_report.py).
+Ключ checko: CHECKO_API_KEY (~/.hermes/.env). Cookies rusprofile:
+secrets/rusprofile_cookies.py (живут ~6 мес, переэкспорт при истечении).
+Playwright живёт только в /usr/bin/python3 (см. справочник checko-api).
+
 ## Primary Sources
 
 ### 1. ЕГРЮЛ — ФНС (egrul.nalog.ru)
