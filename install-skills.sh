@@ -45,7 +45,7 @@
 
 set -uo pipefail
 
-SCRIPT_VERSION="2026-09-16+mirror-data"
+SCRIPT_VERSION="2026-09-16b+mirror-data"
 MIRROR_REPO="hermes-system-mirror"
 
 # --- Аргументы ------------------------------------------------------------------
@@ -138,12 +138,20 @@ fetch_mirror() {
   url="https://${GITHUB_USER}:${TOKEN}@github.com/${GITHUB_LOGIN}/${MIRROR_REPO}.git"
   if [[ -d "$dir/.git" ]]; then
     echo "  зеркало уже скачано — обновляю (git pull)"
-    git -C "$dir" remote set-url origin "https://github.com/${GITHUB_LOGIN}/${MIRROR_REPO}.git" 2>/dev/null
-    git -C "$dir" pull --ff-only --quiet 2>/dev/null || git -C "$dir" pull --quiet
-    git -C "$dir" remote set-url origin "$url" 2>/dev/null
+    # Тянем с токеном в URL: на чистой машине ~/.git-credentials может отсутствовать, а pull
+    # по origin без токена в приватный репо падает. Раньше ошибка глушилась (2>/dev/null) и
+    # установка молча шла из СТАРОГО зеркала — теперь провал видно. Правка 16.09.2026.
+    if ! git -C "$dir" pull --ff-only --quiet "$url" main 2>/dev/null \
+       && ! git -C "$dir" pull --quiet "$url" main 2>/dev/null; then
+      echo "  [!] обновить зеркало не удалось — ставлю из того, что скачано ранее" >&2
+      echo "      проверь доступ к ${GITHUB_LOGIN}/${MIRROR_REPO} (токен/права)" >&2
+    fi
   else
     echo "  клонирую зеркало..."
-    git clone --depth 1 --quiet "$url" "$dir"
+    git clone --depth 1 --quiet "$url" "$dir" || {
+      echo "Ошибка: не удалось склонировать зеркало ${GITHUB_LOGIN}/${MIRROR_REPO} (проверь токен/доступ)." >&2
+      return 1
+    }
   fi
   # Токен не оставляем в .git/config (гигиена: он и так в ~/.git-credentials)
   git -C "$dir" remote set-url origin "https://github.com/${GITHUB_LOGIN}/${MIRROR_REPO}.git" 2>/dev/null || true
