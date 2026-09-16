@@ -45,7 +45,7 @@
 
 set -uo pipefail
 
-SCRIPT_VERSION="2026-09-16b+mirror-data"
+SCRIPT_VERSION="2026-09-16c+mirror-data"
 MIRROR_REPO="hermes-system-mirror"
 
 # --- Аргументы ------------------------------------------------------------------
@@ -259,11 +259,19 @@ printf "  %-22s %s\n" "библиотека"  "$(find "$LIB_DIR" -name 'SKILL.md
 printf "  %-22s %s\n" "триз-ядро"   "$(find "$TRIZ_DIR" -name '*.md' 2>/dev/null | wc -l) файлов"
 printf "  %-22s %s\n" "планы"       "$(find "$PLANS_DIR" -name '*.md' -o -name '*.py' 2>/dev/null | wc -l) файлов"
 printf "  %-22s %s\n" "память (memory/)" "$(find "$MEM_DIR" -type f 2>/dev/null | wc -l) файлов"
+# Секреты в зеркало не кладутся (приватный master-файл вне белого списка сборщика).
+# Без него провайдеры в config.yaml (api_key пустые) не ответят — говорим это прямо.
+if [[ -f "${HOME}/.secrets.env" ]]; then
+  printf "  %-22s %s\n" "секреты" "~/.secrets.env — найден"
+else
+  printf "  %-22s %s\n" "секреты" "~/.secrets.env — НЕТ (перенесите вручную, иначе LLM-провайдеры не ответят)"
+fi
 if [[ "$WITH_DATA" == "yes" ]]; then
   printf "  %-22s %s\n" "данные+проекты" "$(( $( [[ -d "$BASE/Отчёты" ]] && echo 1 || echo 0 ) + $( [[ -d "$BASE/sbbp-case" ]] && echo 1 || echo 0 ) ))/2 ключевых каталогов на месте ($BASE)"
 fi
 echo
 echo "Дальше:"
-echo "  1) проверьте config.yaml — ключи в нём рабочие (зеркало приватное, не публикуйте)"
-echo "  2) перезапустите Hermes (новая сессия), чтобы подхватились SOUL и скиллы"
-echo "  3) повторный запуск безопасен и обновит систему (git pull в ${BASE}/.hermes-mirror)"
+echo "  1) перенесите ~/.secrets.env — в зеркало секреты не кладутся (в config.yaml api_key пустые)"
+echo "  2) проверьте config.yaml — провайдеры/модели/пути под машину"
+echo "  3) перезапустите Hermes (новая сессия), чтобы подхватились SOUL и скиллы"
+echo "  4) повторный запуск безопасен и обновит систему (git pull в ${BASE}/.hermes-mirror)"
