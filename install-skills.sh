@@ -45,7 +45,7 @@
 
 set -uo pipefail
 
-SCRIPT_VERSION="2026-09-16c+mirror-data"
+SCRIPT_VERSION="2026-09-16d+mirror-data"
 MIRROR_REPO="hermes-system-mirror"
 
 # --- Аргументы ------------------------------------------------------------------
@@ -207,7 +207,7 @@ layout() {
   copy_tree "$m/skills-migration" "$MIGR_DIR"
   copy_tree "$m/memory" "$MEM_DIR"
 
-  echo "[6/7] данные и проекты -> $BASE"
+  echo "[6/8] данные и проекты -> $BASE"
   if [[ "$WITH_DATA" == "yes" ]]; then
     for d in "данные" "проекты"; do
       [[ -d "$m/$d" ]] || continue
@@ -218,7 +218,36 @@ layout() {
     echo "    пропущено (нужен флаг --with-data)"
   fi
 
-  echo "[7/7] user-режим: правка абсолютных путей /root -> \$HOME"
+  echo "[7/8] секреты, доступы, конфиги туннелей -> $BASE"
+  if [[ "$DRY_RUN" == "yes" ]]; then
+    echo "    [dry] секреты и wireguard из зеркала не пишутся"
+  elif [[ -d "$m/secrets" ]]; then
+    # Мастер-файл секретов и доступы. Права выставляем сразу: иначе останутся 644 после копирования.
+    for f in .secrets.env .git-credentials; do
+      [[ -f "$m/secrets/$f" ]] || continue
+      cp -f "$m/secrets/$f" "$BASE/$f" && chmod 600 "$BASE/$f" && echo "    $f (0600)"
+    done
+    if [[ -f "$m/secrets/load_secrets.sh" ]]; then
+      cp -f "$m/secrets/load_secrets.sh" "$BASE/load_secrets.sh"
+      chmod 755 "$BASE/load_secrets.sh" && echo "    load_secrets.sh (0755)"
+    fi
+    if [[ -d "$m/secrets/ssh" ]]; then
+      mkdir -p "$BASE/.ssh" && chmod 700 "$BASE/.ssh"
+      cp -f "$m/secrets/ssh/"* "$BASE/.ssh/" 2>/dev/null || true
+      chmod 600 "$BASE/.ssh/"* 2>/dev/null || true
+      echo "    .ssh/ ($(find "$BASE/.ssh" -type f 2>/dev/null | wc -l) файлов, 0700)"
+    fi
+  fi
+  if [[ "$DRY_RUN" == "no" && -d "$m/инфраструктура/wireguard" ]]; then
+    # Боевая установка кладёт конфиги туннелей в системный /etc/wireguard,
+    # песочница (--base-dir) — внутрь базы, чтобы ничего не трогать в системе.
+    if [[ "$MODE" == "root" && "$BASE" == "/root" ]]; then WG_DST="/etc/wireguard"; else WG_DST="$BASE/etc/wireguard"; fi
+    mkdir -p "$WG_DST" && cp -f "$m/инфраструктура/wireguard/"* "$WG_DST/" 2>/dev/null || true
+    chmod 600 "$WG_DST"/* 2>/dev/null || true
+    echo "    wireguard -> $WG_DST ($(find "$WG_DST" -type f 2>/dev/null | wc -l) файлов, 0600)"
+  fi
+
+  echo "[8/8] user-режим: правка абсолютных путей /root -> \$HOME"
   if [[ "$MODE" == "user" && "$DRY_RUN" == "no" ]]; then
     local fixed=0
     for d in "$SKILLS_DIR" "$LIB_DIR" "$TRIZ_DIR" "$PLANS_DIR" "$SCRIPTS_DIR" \
@@ -226,6 +255,8 @@ layout() {
       [[ -d "$d" ]] || continue
       grep -rlZ '/root/' "$d" 2>/dev/null | xargs -0 -r sed -i "s#/root/#$BASE/#g" || true
     done
+    # загрузчик секретов тоже держит абсолютный путь к мастер-файлу — правим его
+    [[ -f "$BASE/load_secrets.sh" ]] && sed -i "s#/root/#$BASE/#g" "$BASE/load_secrets.sh"
     # считаем именно НЕпереписанные ссылки: свои новые пути начинаются с $BASE/ и не в счёт
     fixed="$(grep -rho "/root/[A-Za-zА-Яа-яЁё0-9_./-]*" "$SKILLS_DIR" "$LIB_DIR" "$TRIZ_DIR" "$PLANS_DIR" 2>/dev/null | grep -v "^${BASE}/" | wc -l || true)"
     echo "    переписано: скиллы, библиотеки, планы, скрипты, память (осталось чужих ссылок /root/: ${fixed})"
